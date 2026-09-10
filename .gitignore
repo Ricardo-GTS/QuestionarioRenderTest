@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+
+# Variaveis de ambiente / segredos
+.env
+.env.*
+!.env.example
+
+# Testes / cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Alembic (nao versionar bancos sqlite locais gerados por engano)
+*.sqlite3
+
+# Reflex (frontend)
+frontend/.web/
+frontend/**/__pycache__/
+.states/
+
+# Docker / Postgres / pgvector
+pgdata/
+postgres-data/
+docker-compose.override.yml
+
+# Ollama (modelos baixados localmente, fora do container)
+.ollama/
+ollama-data/
+models/
+
+# Editores / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# SO
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Node/bun (caso o build do Reflex gere artefatos locais)
+node_modules/
+bun.lockb

@@ -1,0 +1,137 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Stack confirmada
+
+| Camada | Escolha |
+|---|---|
+| Backend | FastAPI + SQLAlchemy 2.0 + Alembic |
+| Frontend | Reflex (Python, compila para SPA React) |
+| Banco | PostgreSQL + extensao `pgvector` (indice HNSW, distancia de cosseno) |
+| Embeddings | Ollama local, modelo `nomic-embed-text` |
+| Autenticacao | JWT em header `Authorization: Bearer` (guardado no state/localStorage do Reflex, nao em cookie httpOnly) |
+| Moderacao | Flag automatica apos `REPORT_THRESHOLD` reportes (default 3) — sem remocao automatica, sem painel de admin no MVP |
+| Recuperacao de senha | Fora do MVP (fase 2) |
+
+Essas decisoes vieram de uma entrevista de esclarecimento explicita com o usuario — nao as reabra sem confirmar de novo. Detalhes de cada trade-off estao no historico da conversa; o resumo pratico:
+- Reflex foi escolhido sobre Django porque o nucleo tecnico do projeto (embedding assincrono + pgvector) pesa mais que o auth/admin gratis do Django, que o MVP nao usaria mesmo (moderacao e automatica, nao tem painel humano).
+- JWT em header (nao cookie httpOnly) foi escolhido por simplicidade, aceitando o risco de XSS por ser um sistema educacional sem dados sensiveis — evita lidar com CORS/SameSite entre o servidor Reflex e o FastAPI.
+
+## Comandos
+
+```bash
+# Subir tudo (Postgres+pgvector, Ollama, backend, frontend)
+cp .env.example .env
+docker compose up --build
+
+# Backend local
+cd backend && pip install -r requirements.txt
+alembic upgrade head              # aplicar migrations
+alembic revision -m "descricao"   # nova migration
+uvicorn app.main:app --reload
+pytest                            # todos os testes (integracao faz skip sem Postgres+pgvector)
+pytest tests/test_similarity.py -v -k nome_do_teste   # um teste especifico
+
+# Frontend local
+cd frontend && pip install -r requirements.txt
+reflex run
+```
+
+Variaveis de ambiente completas em `.env.example` — `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` nunca devem ser hardcoded no codigo.
+
+## Arquitetura
+
+```
+backend/app/
+├── main.py              # monta o FastAPI app e inclui os routers
+├── core/                # config (pydantic-settings), security (hash + JWT), logging
+├── db/                  # engine/session, Base declarativa
+├── models/               # User, Question (coluna Vector(768) via pgvector-sqlalchemy), Report
+├── schemas/              # Pydantic request/response
+├── api/routers/          # auth, questions, quiz, reports, health
+├── api/deps.py           # get_db, get_current_user (valida JWT do header)
+└── services/
+    ├── embeddings.py      # chama Ollama /api/embeddings (async)
+    ├── similarity.py      # busca HNSW por cosseno + filtro por threshold (logica pura testavel em filter_by_threshold)
+    ├── quiz.py             # selecao aleatoria + calculo de pontuacao
+    └── moderation.py       # contagem de reportes + regra de flag (logica pura testavel em should_flag)
+
+frontend/questionario/
+├── api_client.py          # wrapper httpx, injeta Authorization no header
+├── state/                 # AuthState, QuestionState, QuizState, ReportState (rx.State)
+├── pages/                 # login, register, home (criar pergunta), quiz, account
+└── components/            # navbar, report_modal, question_card
+```
+
+**Fluxo critico (RF02/RF05 — dedupe semantica):** `POST /questions` chama `services/embeddings.get_embedding` (Ollama, async) → `services/similarity.find_similar_active_questions` busca vizinhos via `Question.embedding.cosine_distance(...)` (indice HNSW, `vector_cosine_ops`) → se similaridade `>= SIMILARITY_THRESHOLD`, retorna 409 com as perguntas similares em vez de salvar.
+
+**Moderacao (RF04):** `POST /questions/{id}/report` grava o `Report` e `services/moderation.register_report` verifica a contagem; ao atingir `REPORT_THRESHOLD`, muda `Question.status` para `reported` (sai do pool usado em `services/quiz.pick_random_questions`, que so seleciona `status == active`).
+
+**Padrao dos services:** a logica de decisao (threshold de similaridade, regra de flag, calculo de pontuacao) fica em funcoes puras sem dependencia de DB (`filter_by_threshold`, `should_flag`, `score_quiz`) justamente para serem testadas sem precisar de Postgres — ver `backend/tests/`. Ao adicionar regra de negocio nova, prefira esse padrao em vez de misturar decisao com a query SQL.
+
+**Reflex — armadilha conhecida:** esta versao do Reflex (`0.9.10.post2`) **nao gera setters automaticos** (`set_<campo>`) para vars de state simples — cada campo de formulario precisa de um metodo `set_<campo>` explicito na classe de State (ver `AuthState`, `QuestionState`, `ReportState`). Tambem, `rx.foreach` nao funciona sobre uma var `dict`/`Any` (ex: indexar um dict generico) — precisa de uma var `list[...]` com tipo concreto (ver `QuizState.feedback` como separado de um `result: dict` generico).
+
+**Backend — pins de versao testados contra Python 3.13/3.14:** os pins em `backend/requirements.txt` foram ajustados apos erros reais de instalacao/execucao em Python mais novo que 3.12 (o que a imagem `python:3.12-slim` do Dockerfile usa, mas o dev pode ter localmente): `sqlalchemy==2.0.35` original quebrava a resolucao de `Mapped[str | None]` (corrigido para `2.0.52`), `psycopg[binary]==3.2.2` nao tinha wheel (corrigido para `3.2.10`), `pydantic==2.9.2` falhava ao compilar `pydantic-core` do zero (corrigido para `2.13.5`). Tambem trocamos `passlib[bcrypt]` pelo pacote `bcrypt` direto em `core/security.py` — `passlib` esta sem manutencao e quebra com versoes recentes de `bcrypt` (`ValueError: password cannot be longer than 72 bytes` mesmo em senhas curtas). Se reintroduzir uma lib desse tipo, valide a instalacao antes de assumir que o pin funciona.
+
+## Testes
+
+`backend/tests/` tem duas categorias:
+- **Unitarios** (`test_similarity.py`, `test_moderation.py`, `test_quiz_service.py`): puros, rodam em qualquer lugar, sem DB.
+- **Integracao** (`test_api_flow.py`): sobem o `TestClient` do FastAPI contra um Postgres real com pgvector; fazem `skip` automatico (via `requires_db` em `conftest.py`) se `DATABASE_URL`/`TEST_DATABASE_URL` nao estiver acessivel. O client de teste sobrescreve `get_embedding` por um embedding deterministico para nao depender do Ollama.
+
+## Especificacao de requisitos (referencia)
+
+Requisitos funcionais e nao funcionais originais do projeto — uteis para checar se uma mudanca ainda atende ao escopo do MVP.
+
+### Visao geral do produto
+
+Plataforma web onde alunos se cadastram, criam perguntas de Verdadeiro ou Falso sobre qualquer conteúdo de estudo, e respondem questionários montados aleatoriamente a partir do banco de perguntas de todos os usuários. O sistema evita duplicação semântica de perguntas usando embeddings + busca vetorial.
+
+### Requisitos Funcionais (RF)
+
+**RF01 — Cadastro e autenticação**
+- Aluno se cadastra com nome, e-mail e senha.
+- Login com e-mail/senha (JWT em header `Authorization`).
+- Aluno pode editar seus dados de conta (nome, senha, e-mail) e excluir a própria conta.
+- Recuperação de senha: fora do MVP (fase 2).
+
+**RF02 — Criação de perguntas V/F**
+- Usuário autenticado cria uma pergunta: enunciado (texto), resposta correta (Verdadeiro/Falso), categoria/tema opcional.
+- Antes de salvar, o sistema calcula o embedding do enunciado e busca no banco vetorial perguntas existentes com **similaridade ≥ 75%** (configurável).
+  - Se encontrar, a pergunta é **descartada** (não salva) e o sistema exibe ao usuário a(s) pergunta(s) já existente(s) mais similar(es).
+  - Se não encontrar, a pergunta é salva normalmente, com seu embedding persistido junto.
+- Cada pergunta guarda: autor, enunciado, resposta correta, embedding, categoria, data de criação, status (ativa/reportada/removida).
+
+**RF03 — Questionário aleatório**
+- Usuário solicita um questionário; o sistema seleciona X perguntas aleatórias (configurável, default 10) dentre as perguntas ativas de outros usuários (exclui as do próprio usuário).
+- Usuário responde V ou F para cada pergunta.
+- Ao final, sistema mostra pontuação (acertos/total) e feedback por pergunta.
+
+**RF04 — Reporte de perguntas**
+- Usuário pode reportar uma pergunta como incorreta/problemática, com motivo (texto livre + categoria opcional).
+- Reportes ficam associados à pergunta e ao usuário que reportou, com data.
+- Regra de moderação: flag automática para revisão após N reportes (default configurável 3), sem remoção automática definitiva.
+
+**RF05 — Detecção de similaridade semântica (núcleo técnico)**
+- Embedding do enunciado gerado localmente via Ollama (`nomic-embed-text`).
+- Embeddings persistidos no Postgres via `pgvector`.
+- Busca de vizinhos mais próximos por similaridade de cosseno, limiar de 75% configurável (env var, nunca hardcoded).
+
+### Requisitos Não Funcionais (RNF)
+
+- **Stack:** Backend FastAPI, Frontend Reflex, Postgres+pgvector, Ollama local (sem API paga externa).
+- **Persistência:** SQLAlchemy + Alembic com migrations versionadas.
+- **Segurança:** senhas com hash forte (bcrypt), validação de entrada em todos os endpoints (Pydantic). Rate limiting e proteção CSRF/XSS ainda não implementados — considerar antes de produção.
+- **Performance:** índice `hnsw` no pgvector para a busca vetorial; geração de embedding é assíncrona.
+- **Testes:** unitários para threshold de similaridade, seleção aleatória/scoring; integração para os principais endpoints.
+- **Observabilidade:** logs estruturados nos pontos críticos (falha Ollama, pergunta descartada, reporte registrado); `/health` verificando Postgres e Ollama.
+- **Containerização:** `docker-compose.yml` orquestra backend, frontend, Postgres+pgvector e Ollama; variáveis de ambiente via `.env`.
+- **Usabilidade:** fluxo de quiz responsivo em mobile; mensagens de erro claras (ex: pergunta duplicada mostra a pergunta similar).
+
+### Fora de escopo (MVP)
+
+- Gamificação (ranking, pontos, badges).
+- Perguntas em formatos além de V/F (múltipla escolha etc.).
+- Painel de moderação humana / admin completo (moderação do MVP é só flag automática).
+- Recuperação de senha (fluxo de e-mail).
