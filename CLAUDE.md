@@ -83,7 +83,7 @@ frontend/questionario/
 
 `backend/tests/` tem duas categorias:
 - **Unitarios** (`test_similarity.py`, `test_moderation.py`, `test_quiz_service.py`, `test_admin_auth.py`, `test_runtime_settings.py`, `test_stats.py`): puros, rodam em qualquer lugar, sem DB.
-- **Integracao** (`test_api_flow.py`, `test_admin_flow.py`): sobem o `TestClient` do FastAPI contra um Postgres real com pgvector; fazem `skip` automatico (via `requires_db` em `conftest.py`) se `DATABASE_URL`/`TEST_DATABASE_URL` nao estiver acessivel. O client de teste sobrescreve `get_embedding` por um embedding deterministico para nao depender do Ollama. `conftest.py` seta `ADMIN_EMAILS=admin@example.com` por default — os testes de admin registram/logam com esse e-mail pra virar admin.
+- **Integracao** (`test_api_flow.py`, `test_admin_flow.py`): sobem o `TestClient` do FastAPI contra um Postgres real com pgvector; fazem `skip` automatico (via `requires_db` em `conftest.py`) se `DATABASE_URL`/`TEST_DATABASE_URL` nao estiver acessivel. O client de teste sobrescreve `get_embedding` por um embedding deterministico para nao depender do Ollama. `conftest.py` seta `ADMIN_EMAILS=admin@example.com` por default — os testes de admin registram/logam com esse e-mail pra virar admin. `conftest.py` tambem desliga o rate limiter (`limiter.enabled = False`) — sem isso, os varios logins entre arquivos de teste diferentes dividiriam o mesmo limite de 5/min (TestClient sempre usa o mesmo IP fake) e quebrariam testes sem relacao nenhuma com rate limiting.
 
 ## Especificacao de requisitos (referencia)
 
@@ -127,8 +127,8 @@ Plataforma web onde alunos se cadastram, criam perguntas de Verdadeiro ou Falso 
 
 - **Stack:** Backend FastAPI, Frontend Reflex, Postgres+pgvector, Ollama local (sem API paga externa).
 - **Persistência:** SQLAlchemy + Alembic com migrations versionadas.
-- **Segurança:** senhas com hash forte (bcrypt), validação de entrada em todos os endpoints (Pydantic). Rate limiting e proteção CSRF/XSS ainda não implementados — considerar antes de produção.
-- **Performance:** índice `hnsw` no pgvector para a busca vetorial; geração de embedding é assíncrona.
+- **Segurança:** senhas com hash forte (bcrypt), validação de entrada em todos os endpoints (Pydantic). Rate limiting em `/auth/login` e `POST /questions` via `slowapi` (`core/rate_limit.py`, 5/min e 20/min por IP). Proteção CSRF/XSS ainda não implementada — considerar antes de produção.
+- **Performance:** índice `hnsw` no pgvector para a busca vetorial; geração de embedding é assíncrona; pool de conexões do Postgres configurável (`DB_POOL_SIZE`/`DB_MAX_OVERFLOW`, default 20+20) para suportar vários alunos concorrentes.
 - **Testes:** unitários para threshold de similaridade, seleção aleatória/scoring; integração para os principais endpoints.
 - **Observabilidade:** logs estruturados nos pontos críticos (falha Ollama, pergunta descartada, reporte registrado); `/health` verificando Postgres e Ollama.
 - **Containerização:** `docker-compose.yml` orquestra backend, frontend, Postgres+pgvector e Ollama; variáveis de ambiente via `.env`.

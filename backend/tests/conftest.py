@@ -16,7 +16,13 @@ from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 from app import models  # noqa: E402,F401  (registra os modelos em Base.metadata)
 from app.core.config import settings  # noqa: E402
+from app.core.rate_limit import limiter  # noqa: E402
 from app.db.base import Base  # noqa: E402
+
+# Rate limiting e' por IP/minuto (ver core/rate_limit.py) -- desabilitado nos
+# testes pra nao acumular limite entre chamadas de login/criacao de pergunta
+# de testes diferentes (TestClient sempre usa o mesmo IP fake).
+limiter.enabled = False
 
 
 def _database_available() -> bool:

@@ -18,7 +18,12 @@ class Settings(BaseSettings):
 
     jwt_secret: str
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60
+    jwt_expire_minutes: int = 10080  # 7 dias
+
+    # Pool de conexoes do Postgres. Defaults do SQLAlchemy (5 + 10 overflow = 15)
+    # sao baixos para varios alunos usando ao mesmo tempo; ver db/session.py.
+    db_pool_size: int = 20
+    db_max_overflow: int = 20
 
     admin_emails_raw: str = Field(default="", alias="ADMIN_EMAILS")
 

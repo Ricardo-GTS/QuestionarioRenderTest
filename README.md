@@ -29,13 +29,15 @@ Ver `.env.example`. Nenhum valor de negocio (limiar de similaridade, tamanho do 
 | Variavel | Descricao | Default |
 |---|---|---|
 | `DATABASE_URL` | URL de conexao do Postgres (SQLAlchemy) | - |
+| `DB_POOL_SIZE` | Conexoes persistentes no pool do Postgres | `20` |
+| `DB_MAX_OVERFLOW` | Conexoes extras permitidas em picos, alem do pool | `20` |
 | `OLLAMA_HOST` | URL do servidor Ollama | `http://ollama:11434` |
 | `OLLAMA_EMBED_MODEL` | Modelo de embedding usado | `nomic-embed-text` |
 | `SIMILARITY_THRESHOLD` | Limiar de similaridade de cosseno para descartar pergunta duplicada | `0.75` |
 | `QUIZ_SIZE` | Quantidade de perguntas por questionario | `10` |
 | `REPORT_THRESHOLD` | Quantidade de reportes para flagar uma pergunta | `3` |
 | `JWT_SECRET` | Segredo usado para assinar o JWT | - |
-| `JWT_EXPIRE_MINUTES` | Validade do token em minutos | `60` |
+| `JWT_EXPIRE_MINUTES` | Validade do token em minutos | `10080` (7 dias) |
 | `ADMIN_EMAILS` | E-mails (separados por virgula) com acesso ao painel de admin | vazio |
 
 `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` no `.env` sao so o valor **inicial** (semeado na migration `0002`) — depois do primeiro boot, esses 3 ficam editaveis em runtime pelo painel de admin (`/admin/settings`), sem precisar reiniciar o container.
@@ -90,6 +92,12 @@ Ao criar uma pergunta (`POST /questions`): o backend gera o embedding do enuncia
 ## Moderacao
 
 Cada reporte em uma pergunta (`POST /questions/{id}/report`) e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva).
+
+## Concorrencia e rate limiting
+
+- **Pool de conexoes do Postgres:** configurado via `DB_POOL_SIZE`/`DB_MAX_OVERFLOW` (default 20+20 = ate 40 conexoes simultaneas), acima do default do SQLAlchemy (5+10) para aguentar varios alunos usando ao mesmo tempo.
+- **Rate limiting:** `POST /auth/login` (5/minuto por IP) e `POST /questions` (20/minuto por IP), via `slowapi`. Excede o limite -> `429 Too Many Requests`. Configuravel em `backend/app/core/rate_limit.py`.
+- Gargalo esperado sob carga: geracao de embedding no Ollama e' a operacao mais pesada (CPU-bound, sem GPU) — perguntas criadas em rajada ficam mais lentas para salvar, mas nao travam o sistema.
 
 ## Painel de admin (professor)
 

@@ -1,9 +1,10 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
+from app.core.rate_limit import CREATE_QUESTION_RATE_LIMIT, limiter
 from app.models.question import Question
 from app.models.user import User
 from app.schemas.question import QuestionCreate, QuestionOut, SimilarQuestionOut
@@ -16,7 +17,9 @@ router = APIRouter(prefix="/questions", tags=["questions"])
 
 
 @router.post("", response_model=QuestionOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit(CREATE_QUESTION_RATE_LIMIT)
 async def create_question(
+    request: Request,
     payload: QuestionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
