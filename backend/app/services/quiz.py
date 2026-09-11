@@ -1,14 +1,15 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.models.enums import QuestionStatus
 from app.models.question import Question
+from app.models.quiz_attempt import QuizAttempt
+from app.services.runtime_settings import get_effective_settings
 
 
 def pick_random_questions(db: Session, exclude_author_id: int, size: int | None = None) -> list[Question]:
     """Seleciona `size` perguntas ativas aleatorias, excluindo as do proprio usuario."""
-    limit = size or settings.quiz_size
+    limit = size or get_effective_settings(db).quiz_size
     stmt = (
         select(Question)
         .where(Question.status == QuestionStatus.ACTIVE, Question.author_id != exclude_author_id)
@@ -42,3 +43,11 @@ def score_quiz(questions: list[Question], answers: dict[int, bool]) -> dict:
         "total": len(questions),
         "feedback": feedback,
     }
+
+
+def record_attempt(db: Session, user_id: int, score: int, total: int) -> QuizAttempt:
+    attempt = QuizAttempt(user_id=user_id, score=score, total=total)
+    db.add(attempt)
+    db.commit()
+    db.refresh(attempt)
+    return attempt

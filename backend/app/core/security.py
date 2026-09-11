@@ -26,3 +26,7 @@ def decode_access_token(token: str) -> str | None:
     except jwt.PyJWTError:
         return None
     return payload.get("sub")
+
+
+def is_admin_email(email: str) -> bool:
+    return email.strip().lower() in settings.admin_emails

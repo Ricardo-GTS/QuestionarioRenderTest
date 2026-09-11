@@ -6,7 +6,7 @@ from app.api.deps import get_current_user, get_db
 from app.models.question import Question
 from app.models.user import User
 from app.schemas.quiz import QuizOut, QuizQuestionOut, QuizResult, QuizSubmit
-from app.services.quiz import pick_random_questions, score_quiz
+from app.services.quiz import pick_random_questions, record_attempt, score_quiz
 
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
@@ -33,4 +33,5 @@ def submit_quiz(
     answers = {answer.question_id: answer.answer for answer in payload.answers}
 
     result = score_quiz(questions, answers)
+    record_attempt(db, user_id=current_user.id, score=result["score"], total=result["total"])
     return QuizResult(**result)

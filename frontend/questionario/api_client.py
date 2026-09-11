@@ -16,7 +16,7 @@ def _auth_headers(token: str | None) -> dict:
     return {"Authorization": f"Bearer {token}"} if token else {}
 
 
-async def _request(method: str, path: str, token: str | None = None, **kwargs) -> dict:
+async def _request(method: str, path: str, token: str | None = None, **kwargs):
     url = f"{API_BASE_URL}{path}"
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.request(method, url, headers=_auth_headers(token), **kwargs)
@@ -78,3 +78,44 @@ async def report_question(token: str, question_id: int, reason: str, reason_cate
         token=token,
         json={"reason": reason, "reason_category": reason_category},
     )
+
+
+# --- Admin ---------------------------------------------------------------
+
+
+async def admin_get_settings(token: str) -> dict:
+    return await _request("GET", "/admin/settings", token=token)
+
+
+async def admin_update_settings(token: str, **fields) -> dict:
+    payload = {k: v for k, v in fields.items() if v is not None}
+    return await _request("PUT", "/admin/settings", token=token, json=payload)
+
+
+async def admin_list_questions(token: str, status: str = "reported") -> list[dict]:
+    return await _request("GET", "/admin/questions", token=token, params={"status": status})
+
+
+async def admin_approve_question(token: str, question_id: int) -> dict:
+    return await _request("PUT", f"/admin/questions/{question_id}/approve", token=token)
+
+
+async def admin_remove_question(token: str, question_id: int) -> dict:
+    return await _request("PUT", f"/admin/questions/{question_id}/remove", token=token)
+
+
+async def admin_update_question(token: str, question_id: int, **fields) -> dict:
+    payload = {k: v for k, v in fields.items() if v is not None}
+    return await _request("PUT", f"/admin/questions/{question_id}", token=token, json=payload)
+
+
+async def admin_list_users(token: str) -> list[dict]:
+    return await _request("GET", "/admin/users", token=token)
+
+
+async def admin_delete_user(token: str, user_id: int) -> dict:
+    return await _request("DELETE", f"/admin/users/{user_id}", token=token)
+
+
+async def admin_get_stats(token: str) -> dict:
+    return await _request("GET", "/admin/stats", token=token)

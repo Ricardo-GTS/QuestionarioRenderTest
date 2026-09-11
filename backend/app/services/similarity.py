@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.models.enums import QuestionStatus
 from app.models.question import Question
+from app.services.runtime_settings import get_effective_settings
 
 
 @dataclass
@@ -37,4 +37,5 @@ def find_similar_active_questions(db: Session, embedding: list[float], limit: in
         .limit(limit)
     )
     rows = db.execute(stmt).all()
-    return filter_by_threshold(rows, settings.similarity_threshold)
+    effective_settings = get_effective_settings(db)
+    return filter_by_threshold(rows, effective_settings.similarity_threshold)

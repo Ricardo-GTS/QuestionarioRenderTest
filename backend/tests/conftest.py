@@ -1,6 +1,7 @@
 import os
 
 os.environ.setdefault("JWT_SECRET", "test-secret")
+os.environ.setdefault("ADMIN_EMAILS", "admin@example.com")
 os.environ.setdefault(
     "DATABASE_URL",
     os.environ.get(

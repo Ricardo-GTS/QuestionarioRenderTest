@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import create_access_token, hash_password, is_admin_email, verify_password
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserLogin, UserOut, UserUpdate
 
@@ -20,6 +20,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     db.add(user)
     db.commit()
     db.refresh(user)
+    user.is_admin = is_admin_email(user.email)
     return user
 
 
@@ -35,6 +36,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)) -> Token:
 
 @router.get("/me", response_model=UserOut)
 def read_me(current_user: User = Depends(get_current_user)) -> User:
+    current_user.is_admin = is_admin_email(current_user.email)
     return current_user
 
 
@@ -58,6 +60,7 @@ def update_me(
 
     db.commit()
     db.refresh(current_user)
+    current_user.is_admin = is_admin_email(current_user.email)
     return current_user
 
 

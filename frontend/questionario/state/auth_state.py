@@ -9,6 +9,7 @@ class AuthState(rx.State):
     user_id: int = 0
     user_name: str = ""
     user_email: str = ""
+    is_admin: bool = False
 
     name: str = ""
     email: str = ""
@@ -73,6 +74,7 @@ class AuthState(rx.State):
             self.user_id = me["id"]
             self.user_name = me["name"]
             self.user_email = me["email"]
+            self.is_admin = me.get("is_admin", False)
         except ApiError:
             pass
 
@@ -84,6 +86,7 @@ class AuthState(rx.State):
         self.user_id = 0
         self.user_name = ""
         self.user_email = ""
+        self.is_admin = False
         return rx.redirect("/login")
 
     async def load_current_user(self):
@@ -94,11 +97,29 @@ class AuthState(rx.State):
             self.user_id = me["id"]
             self.user_name = me["name"]
             self.user_email = me["email"]
+            self.is_admin = me.get("is_admin", False)
             self.edit_name = me["name"]
             self.edit_email = me["email"]
         except ApiError:
             self.token = ""
             return rx.redirect("/login")
+
+    async def require_admin(self):
+        """Usado no on_mount das paginas /admin/* -- garante sessao valida e acesso de admin."""
+        if not self.token:
+            return rx.redirect("/login")
+        try:
+            me = await api_client.get_me(self.token)
+        except ApiError:
+            self.token = ""
+            return rx.redirect("/login")
+
+        self.user_id = me["id"]
+        self.user_name = me["name"]
+        self.user_email = me["email"]
+        self.is_admin = me.get("is_admin", False)
+        if not self.is_admin:
+            return rx.redirect("/")
 
     async def update_account(self):
         self.account_message = ""

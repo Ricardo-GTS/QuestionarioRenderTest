@@ -36,6 +36,9 @@ Ver `.env.example`. Nenhum valor de negocio (limiar de similaridade, tamanho do 
 | `REPORT_THRESHOLD` | Quantidade de reportes para flagar uma pergunta | `3` |
 | `JWT_SECRET` | Segredo usado para assinar o JWT | - |
 | `JWT_EXPIRE_MINUTES` | Validade do token em minutos | `60` |
+| `ADMIN_EMAILS` | E-mails (separados por virgula) com acesso ao painel de admin | vazio |
+
+`SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` no `.env` sao so o valor **inicial** (semeado na migration `0002`) — depois do primeiro boot, esses 3 ficam editaveis em runtime pelo painel de admin (`/admin/settings`), sem precisar reiniciar o container.
 
 ## Desenvolvimento local (sem Docker)
 
@@ -88,9 +91,18 @@ Ao criar uma pergunta (`POST /questions`): o backend gera o embedding do enuncia
 
 Cada reporte em uma pergunta (`POST /questions/{id}/report`) e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva).
 
+## Painel de admin (professor)
+
+Quem estiver listado em `ADMIN_EMAILS` vira admin automaticamente ao logar (sem cadastro especial, sem coluna de role no banco). Acesso em `/admin`:
+
+- **Dashboard** (`/admin`) — totais de usuarios/perguntas/reportes, taxa media de acerto, perguntas e reportes por categoria.
+- **Moderacao** (`/admin/moderation`) — lista perguntas reportadas, aprova (volta pra `active`), remove (`removed`) ou edita o enunciado/resposta/categoria (recalcula o embedding se o enunciado mudar).
+- **Usuarios** (`/admin/users`) — lista com contagem de perguntas por usuario, exclusao de conta (com confirmacao; nao permite excluir a propria conta admin por ali).
+- **Configuracoes** (`/admin/settings`) — edita `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` em runtime.
+
 ## Fora do escopo do MVP
 
 - Recuperacao de senha (fluxo por e-mail) — fase 2
 - Gamificacao (ranking, pontos, badges)
 - Perguntas em formatos alem de V/F
-- Painel de moderacao humana (a moderacao do MVP e so a flag automatica por reportes)
+- Tabela de auditoria dedicada para acoes do admin (hoje fica so no log estruturado)

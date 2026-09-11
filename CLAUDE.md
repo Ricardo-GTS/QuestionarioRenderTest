@@ -11,7 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Banco | PostgreSQL + extensao `pgvector` (indice HNSW, distancia de cosseno) |
 | Embeddings | Ollama local, modelo `nomic-embed-text` |
 | Autenticacao | JWT em header `Authorization: Bearer` (guardado no state/localStorage do Reflex, nao em cookie httpOnly) |
-| Moderacao | Flag automatica apos `REPORT_THRESHOLD` reportes (default 3) — sem remocao automatica, sem painel de admin no MVP |
+| Moderacao | Flag automatica apos `REPORT_THRESHOLD` reportes (default 3) — sem remocao automatica |
+| Painel de admin | Quem estiver em `ADMIN_EMAILS` (.env) vira admin no login — sem coluna `role`, sem auto-promocao |
 | Recuperacao de senha | Fora do MVP (fase 2) |
 
 Essas decisoes vieram de uma entrevista de esclarecimento explicita com o usuario — nao as reabra sem confirmar de novo. Detalhes de cada trade-off estao no historico da conversa; o resumo pratico:
@@ -45,30 +46,34 @@ Variaveis de ambiente completas em `.env.example` — `SIMILARITY_THRESHOLD`, `Q
 ```
 backend/app/
 ├── main.py              # monta o FastAPI app e inclui os routers
-├── core/                # config (pydantic-settings), security (hash + JWT), logging
+├── core/                # config (pydantic-settings, admin_emails), security (hash + JWT + is_admin_email), logging
 ├── db/                  # engine/session, Base declarativa
-├── models/               # User, Question (coluna Vector(768) via pgvector-sqlalchemy), Report
-├── schemas/              # Pydantic request/response
-├── api/routers/          # auth, questions, quiz, reports, health
-├── api/deps.py           # get_db, get_current_user (valida JWT do header)
+├── models/               # User, Question (coluna Vector(768)), Report, AppSettings (linha unica), QuizAttempt
+├── schemas/              # Pydantic request/response (user, question, quiz, report, admin)
+├── api/routers/          # auth, questions, quiz, reports, health, admin
+├── api/deps.py           # get_db, get_current_user, get_current_admin (403 se email fora de ADMIN_EMAILS)
 └── services/
     ├── embeddings.py      # chama Ollama /api/embeddings (async)
     ├── similarity.py      # busca HNSW por cosseno + filtro por threshold (logica pura testavel em filter_by_threshold)
-    ├── quiz.py             # selecao aleatoria + calculo de pontuacao
-    └── moderation.py       # contagem de reportes + regra de flag (logica pura testavel em should_flag)
+    ├── quiz.py             # selecao aleatoria + calculo de pontuacao + record_attempt (persiste QuizAttempt)
+    ├── moderation.py       # reportes + regra de flag (should_flag) + approve/remove/update_question (admin)
+    ├── runtime_settings.py # SIMILARITY_THRESHOLD/QUIZ_SIZE/REPORT_THRESHOLD efetivos (tabela app_settings, editavel via /admin/settings)
+    └── stats.py            # agregacoes do dashboard (compute_average_score_percent e' a parte pura/testavel)
 
 frontend/questionario/
-├── api_client.py          # wrapper httpx, injeta Authorization no header
-├── state/                 # AuthState, QuestionState, QuizState, ReportState (rx.State)
-├── pages/                 # login, register, home (criar pergunta), quiz, account
-└── components/            # navbar, report_modal, question_card
+├── api_client.py          # wrapper httpx, injeta Authorization no header (inclui admin_* )
+├── state/                 # AuthState (+is_admin), QuestionState, QuizState, ReportState, admin_state.py (4 states)
+├── pages/                 # login, register, home, quiz, account, admin_dashboard/moderation/users/settings
+└── components/            # navbar (link Admin condicional), admin_nav, report_modal, question_card
 ```
 
 **Fluxo critico (RF02/RF05 — dedupe semantica):** `POST /questions` chama `services/embeddings.get_embedding` (Ollama, async) → `services/similarity.find_similar_active_questions` busca vizinhos via `Question.embedding.cosine_distance(...)` (indice HNSW, `vector_cosine_ops`) → se similaridade `>= SIMILARITY_THRESHOLD`, retorna 409 com as perguntas similares em vez de salvar.
 
 **Moderacao (RF04):** `POST /questions/{id}/report` grava o `Report` e `services/moderation.register_report` verifica a contagem; ao atingir `REPORT_THRESHOLD`, muda `Question.status` para `reported` (sai do pool usado em `services/quiz.pick_random_questions`, que so seleciona `status == active`).
 
-**Padrao dos services:** a logica de decisao (threshold de similaridade, regra de flag, calculo de pontuacao) fica em funcoes puras sem dependencia de DB (`filter_by_threshold`, `should_flag`, `score_quiz`) justamente para serem testadas sem precisar de Postgres — ver `backend/tests/`. Ao adicionar regra de negocio nova, prefira esse padrao em vez de misturar decisao com a query SQL.
+**Padrao dos services:** a logica de decisao (threshold de similaridade, regra de flag, calculo de pontuacao, media do dashboard) fica em funcoes puras sem dependencia de DB (`filter_by_threshold`, `should_flag`, `score_quiz`, `compute_average_score_percent`) justamente para serem testadas sem precisar de Postgres — ver `backend/tests/`. Ao adicionar regra de negocio nova, prefira esse padrao em vez de misturar decisao com a query SQL.
+
+**Admin (painel do professor):** quem esta em `ADMIN_EMAILS` (.env, lista separada por virgula) vira admin — nao ha coluna `role` nem fluxo de auto-promocao. `GET /auth/me` retorna `is_admin` computado (nunca expõe a lista de e-mails pro frontend). Todas as rotas `/admin/*` exigem `get_current_admin`. `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` no `.env` sao so o default inicial (seed da migration `0002`) — o valor efetivo mora na tabela `app_settings` (linha unica, id=1) e e' editavel via `PUT /admin/settings`; `services/similarity.py`, `quiz.py` e `moderation.py` leem de la (`get_effective_settings(db)`), nunca do `settings` estatico direto pra esses 3 campos.
 
 **Reflex — armadilha conhecida:** esta versao do Reflex (`0.9.10.post2`) **nao gera setters automaticos** (`set_<campo>`) para vars de state simples — cada campo de formulario precisa de um metodo `set_<campo>` explicito na classe de State (ver `AuthState`, `QuestionState`, `ReportState`). Tambem, `rx.foreach` nao funciona sobre uma var `dict`/`Any` (ex: indexar um dict generico) — precisa de uma var `list[...]` com tipo concreto (ver `QuizState.feedback` como separado de um `result: dict` generico).
 
@@ -77,8 +82,8 @@ frontend/questionario/
 ## Testes
 
 `backend/tests/` tem duas categorias:
-- **Unitarios** (`test_similarity.py`, `test_moderation.py`, `test_quiz_service.py`): puros, rodam em qualquer lugar, sem DB.
-- **Integracao** (`test_api_flow.py`): sobem o `TestClient` do FastAPI contra um Postgres real com pgvector; fazem `skip` automatico (via `requires_db` em `conftest.py`) se `DATABASE_URL`/`TEST_DATABASE_URL` nao estiver acessivel. O client de teste sobrescreve `get_embedding` por um embedding deterministico para nao depender do Ollama.
+- **Unitarios** (`test_similarity.py`, `test_moderation.py`, `test_quiz_service.py`, `test_admin_auth.py`, `test_runtime_settings.py`, `test_stats.py`): puros, rodam em qualquer lugar, sem DB.
+- **Integracao** (`test_api_flow.py`, `test_admin_flow.py`): sobem o `TestClient` do FastAPI contra um Postgres real com pgvector; fazem `skip` automatico (via `requires_db` em `conftest.py`) se `DATABASE_URL`/`TEST_DATABASE_URL` nao estiver acessivel. O client de teste sobrescreve `get_embedding` por um embedding deterministico para nao depender do Ollama. `conftest.py` seta `ADMIN_EMAILS=admin@example.com` por default — os testes de admin registram/logam com esse e-mail pra virar admin.
 
 ## Especificacao de requisitos (referencia)
 
@@ -133,5 +138,9 @@ Plataforma web onde alunos se cadastram, criam perguntas de Verdadeiro ou Falso 
 
 - Gamificação (ranking, pontos, badges).
 - Perguntas em formatos além de V/F (múltipla escolha etc.).
-- Painel de moderação humana / admin completo (moderação do MVP é só flag automática).
-- Recuperação de senha (fluxo de e-mail).
+- Recuperação de senha (fluxo de e-mail) — fase 2.
+- Tabela de auditoria dedicada para ações do admin (hoje é só log estruturado, sem histórico consultável).
+
+### Painel de admin (professor) — adicionado após o MVP
+
+Requisito posterior ao MVP inicial: `role`-free (via `ADMIN_EMAILS`), moderação de perguntas reportadas (aprovar/remover/editar com recálculo de embedding), gestão de usuários (listar + excluir), dashboard (totais, taxa média de acerto via `QuizAttempt`, perguntas/reportes por categoria), e os 3 thresholds de negócio editáveis em runtime via `/admin/settings`. Ver seção "Arquitetura" acima para os arquivos.
