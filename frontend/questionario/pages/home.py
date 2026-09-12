@@ -59,7 +59,7 @@ def home_page() -> rx.Component:
                     spacing="3",
                 ),
                 rx.button("Criar pergunta", on_click=QuestionState.handle_create_question, width="100%"),
-                rx.link(rx.button("Responder questionario", variant="soft", width="100%"), href="/quiz"),
+                rx.link(rx.button("Fazer Questionario", variant="soft", width="100%"), href="/quiz"),
                 spacing="4",
                 width=["90%", "70%", "500px"],
                 padding="1em",

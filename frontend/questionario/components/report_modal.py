@@ -21,7 +21,7 @@ def report_modal() -> rx.Component:
                         width="100%",
                     ),
                     rx.input(
-                        placeholder="Categoria do motivo (opcional)",
+                        placeholder="Tipo de problema (opcional)",
                         value=ReportState.reason_category,
                         on_change=ReportState.set_reason_category,
                         width="100%",

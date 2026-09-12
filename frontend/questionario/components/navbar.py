@@ -10,7 +10,8 @@ def navbar() -> rx.Component:
         rx.cond(
             AuthState.is_authenticated,
             rx.hstack(
-                rx.link("Questionario", href="/quiz"),
+                rx.link("Criar Pergunta", href="/"),
+                rx.link("Fazer Questionario", href="/quiz"),
                 rx.link("Conta", href="/account"),
                 rx.cond(AuthState.is_admin, rx.link("Admin", href="/admin")),
                 rx.button("Sair", on_click=AuthState.logout, size="2", variant="soft"),
