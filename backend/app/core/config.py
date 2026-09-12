@@ -27,6 +27,11 @@ class Settings(BaseSettings):
 
     admin_emails_raw: str = Field(default="", alias="ADMIN_EMAILS")
 
+    # Login opcional com Google (alem do login por email/senha). Vazio = feature
+    # desligada (rota /auth/google recusa qualquer token). Mesmo Client ID usado
+    # pelo frontend (nao e' segredo, mas verifica a audience do id_token).
+    google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID")
+
     @property
     def admin_emails(self) -> set[str]:
         return {email.strip().lower() for email in self.admin_emails_raw.split(",") if email.strip()}

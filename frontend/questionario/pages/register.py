@@ -1,4 +1,5 @@
 import reflex as rx
+from reflex_google_auth import google_login, google_oauth_provider
 
 from questionario.state.auth_state import AuthState
 
@@ -31,6 +32,10 @@ def register_page() -> rx.Component:
                 width="100%",
             ),
             rx.button("Cadastrar", on_click=AuthState.handle_register, width="100%"),
+            rx.divider(),
+            google_oauth_provider(
+                google_login(on_success=AuthState.handle_google_login),
+            ),
             rx.link("Ja tem conta? Entrar", href="/login"),
             spacing="4",
             width=["90%", "70%", "400px"],

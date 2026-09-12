@@ -81,6 +81,32 @@ class AuthState(rx.State):
         self._reset_form()
         return rx.redirect("/")
 
+    async def handle_google_login(self, response: dict):
+        self.error_message = ""
+        credential = response.get("credential")
+        if not credential:
+            self.error_message = "Login com Google falhou."
+            return
+
+        try:
+            data = await api_client.login_with_google(credential)
+        except ApiError:
+            self.error_message = "Nao foi possivel entrar com Google."
+            return
+
+        self.token = data["access_token"]
+        try:
+            me = await api_client.get_me(self.token)
+            self.user_id = me["id"]
+            self.user_name = me["name"]
+            self.user_email = me["email"]
+            self.is_admin = me.get("is_admin", False)
+        except ApiError:
+            pass
+
+        self._reset_form()
+        return rx.redirect("/")
+
     def logout(self):
         self.token = ""
         self.user_id = 0

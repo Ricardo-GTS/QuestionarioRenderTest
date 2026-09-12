@@ -2,6 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 
 from app.core.config import settings
 
@@ -30,3 +32,17 @@ def decode_access_token(token: str) -> str | None:
 
 def is_admin_email(email: str) -> bool:
     return email.strip().lower() in settings.admin_emails
+
+
+def verify_google_id_token(credential: str) -> dict:
+    """Verifica assinatura/audience/expiracao do id_token do Google e devolve as claims.
+
+    Levanta ValueError se o token for invalido (assinatura, audience ou expirado) --
+    tratamento identico ao que a lib google-auth ja levanta internamente.
+    """
+    claims = google_id_token.verify_oauth2_token(
+        credential, google_requests.Request(), audience=settings.google_client_id
+    )
+    if not claims.get("email_verified", False):
+        raise ValueError("Email do Google nao verificado")
+    return claims

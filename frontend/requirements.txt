@@ -1,2 +1,3 @@
 reflex==0.9.10.post2
 httpx==0.27.2
+reflex-google-auth==0.2.0

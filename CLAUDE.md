@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Frontend | Reflex (Python, compila para SPA React) |
 | Banco | PostgreSQL + extensao `pgvector` (indice HNSW, distancia de cosseno) |
 | Embeddings | Ollama local, modelo `nomic-embed-text` |
-| Autenticacao | JWT em header `Authorization: Bearer` (guardado no state/localStorage do Reflex, nao em cookie httpOnly) |
+| Autenticacao | JWT em header `Authorization: Bearer` (guardado no state/localStorage do Reflex, nao em cookie httpOnly). Login com Google via `reflex-google-auth` e' opcional/aditivo, ver secao "Login com Google" abaixo |
 | Moderacao | Flag automatica apos `REPORT_THRESHOLD` reportes (default 3) — sem remocao automatica |
 | Painel de admin | Quem estiver em `ADMIN_EMAILS` (.env) vira admin no login — sem coluna `role`, sem auto-promocao |
 | Recuperacao de senha | Fora do MVP (fase 2) |
@@ -48,7 +48,7 @@ backend/app/
 ├── main.py              # monta o FastAPI app e inclui os routers
 ├── core/                # config (pydantic-settings, admin_emails), security (hash + JWT + is_admin_email), logging
 ├── db/                  # engine/session, Base declarativa
-├── models/               # User, Question (coluna Vector(768)), Report, AppSettings (linha unica), QuizAttempt
+├── models/               # User (hashed_password opcional + google_sub p/ login Google), Question (coluna Vector(768)), Report, AppSettings (linha unica), QuizAttempt
 ├── schemas/              # Pydantic request/response (user, question, quiz, report, admin)
 ├── api/routers/          # auth, questions, quiz, reports, health, admin
 ├── api/deps.py           # get_db, get_current_user, get_current_admin (403 se email fora de ADMIN_EMAILS)
@@ -75,6 +75,8 @@ frontend/questionario/
 
 **Admin (painel do professor):** quem esta em `ADMIN_EMAILS` (.env, lista separada por virgula) vira admin — nao ha coluna `role` nem fluxo de auto-promocao. `GET /auth/me` retorna `is_admin` computado (nunca expõe a lista de e-mails pro frontend). Todas as rotas `/admin/*` exigem `get_current_admin`. `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` no `.env` sao so o default inicial (seed da migration `0002`) — o valor efetivo mora na tabela `app_settings` (linha unica, id=1) e e' editavel via `PUT /admin/settings`; `services/similarity.py`, `quiz.py` e `moderation.py` leem de la (`get_effective_settings(db)`), nunca do `settings` estatico direto pra esses 3 campos.
 
+**Login com Google (opcional, aditivo):** `POST /auth/google` recebe o id_token do Google (`credential`), verifica assinatura/audience/expiracao via `google-auth` (`core/security.verify_google_id_token`, audience = `GOOGLE_CLIENT_ID`) e emite o mesmo JWT que `/auth/login` -- nao ha sessao/estado paralelo. Resolve o usuario por `google_sub` e, se nao achar, por `email` (linka a conta existente em vez de duplicar); so cria usuario novo se nenhum dos dois bater. `User.hashed_password` e' `nullable` por causa disso (conta so-Google nao tem senha) -- `login()` (email/senha) trata `hashed_password is None` como credencial invalida em vez de estourar no bcrypt. No frontend, `reflex_google_auth.google_login`/`google_oauth_provider` (pacote `reflex-google-auth`, so' os componentes visuais) sao usados com `on_success=AuthState.handle_google_login` custom -- nao usamos o `GoogleAuthState` nem a verificacao embutida do pacote, propositalmente, pra manter um unico dono da sessao (nosso JWT/`AuthState.token`). Sem `GOOGLE_CLIENT_ID` configurado, o botao aparece mas o backend rejeita qualquer token (feature desligada, resto do app intacto).
+
 **Reflex — armadilha conhecida:** esta versao do Reflex (`0.9.10.post2`) **nao gera setters automaticos** (`set_<campo>`) para vars de state simples — cada campo de formulario precisa de um metodo `set_<campo>` explicito na classe de State (ver `AuthState`, `QuestionState`, `ReportState`). Tambem, `rx.foreach` nao funciona sobre uma var `dict`/`Any` (ex: indexar um dict generico) — precisa de uma var `list[...]` com tipo concreto (ver `QuizState.feedback` como separado de um `result: dict` generico).
 
 **Backend — pins de versao testados contra Python 3.13/3.14:** os pins em `backend/requirements.txt` foram ajustados apos erros reais de instalacao/execucao em Python mais novo que 3.12 (o que a imagem `python:3.12-slim` do Dockerfile usa, mas o dev pode ter localmente): `sqlalchemy==2.0.35` original quebrava a resolucao de `Mapped[str | None]` (corrigido para `2.0.52`), `psycopg[binary]==3.2.2` nao tinha wheel (corrigido para `3.2.10`), `pydantic==2.9.2` falhava ao compilar `pydantic-core` do zero (corrigido para `2.13.5`). Tambem trocamos `passlib[bcrypt]` pelo pacote `bcrypt` direto em `core/security.py` — `passlib` esta sem manutencao e quebra com versoes recentes de `bcrypt` (`ValueError: password cannot be longer than 72 bytes` mesmo em senhas curtas). Se reintroduzir uma lib desse tipo, valide a instalacao antes de assumir que o pin funciona.
@@ -83,7 +85,7 @@ frontend/questionario/
 
 `backend/tests/` tem duas categorias:
 - **Unitarios** (`test_similarity.py`, `test_moderation.py`, `test_quiz_service.py`, `test_admin_auth.py`, `test_runtime_settings.py`, `test_stats.py`): puros, rodam em qualquer lugar, sem DB.
-- **Integracao** (`test_api_flow.py`, `test_admin_flow.py`): sobem o `TestClient` do FastAPI contra um Postgres real com pgvector; fazem `skip` automatico (via `requires_db` em `conftest.py`) se `DATABASE_URL`/`TEST_DATABASE_URL` nao estiver acessivel. O client de teste sobrescreve `get_embedding` por um embedding deterministico para nao depender do Ollama. `conftest.py` seta `ADMIN_EMAILS=admin@example.com` por default — os testes de admin registram/logam com esse e-mail pra virar admin. `conftest.py` tambem desliga o rate limiter (`limiter.enabled = False`) — sem isso, os varios logins entre arquivos de teste diferentes dividiriam o mesmo limite de 5/min (TestClient sempre usa o mesmo IP fake) e quebrariam testes sem relacao nenhuma com rate limiting.
+- **Integracao** (`test_api_flow.py`, `test_admin_flow.py`, `test_google_auth.py`): sobem o `TestClient` do FastAPI contra um Postgres real com pgvector; fazem `skip` automatico (via `requires_db` em `conftest.py`) se `DATABASE_URL`/`TEST_DATABASE_URL` nao estiver acessivel. O client de teste sobrescreve `get_embedding` por um embedding deterministico para nao depender do Ollama. `test_google_auth.py` monkeypatcha `verify_google_id_token` (via `monkeypatch.setattr` no modulo do router) pra nao depender da API real do Google -- mesma tecnica. `conftest.py` seta `ADMIN_EMAILS=admin@example.com` por default — os testes de admin registram/logam com esse e-mail pra virar admin. `conftest.py` tambem desliga o rate limiter (`limiter.enabled = False`) — sem isso, os varios logins entre arquivos de teste diferentes dividiriam o mesmo limite de 5/min (TestClient sempre usa o mesmo IP fake) e quebrariam testes sem relacao nenhuma com rate limiting.
 
 ## Especificacao de requisitos (referencia)
 
@@ -98,6 +100,7 @@ Plataforma web onde alunos se cadastram, criam perguntas de Verdadeiro ou Falso 
 **RF01 — Cadastro e autenticação**
 - Aluno se cadastra com nome, e-mail e senha.
 - Login com e-mail/senha (JWT em header `Authorization`).
+- Login alternativo com Google (`POST /auth/google`, opcional/aditivo, adicionado após o MVP) -- cria ou vincula a conta pelo e-mail, sem exigir senha.
 - Aluno pode editar seus dados de conta (nome, senha, e-mail) e excluir a própria conta.
 - Recuperação de senha: fora do MVP (fase 2).
 

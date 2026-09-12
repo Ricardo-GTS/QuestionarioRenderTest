@@ -4,9 +4,15 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.core.rate_limit import LOGIN_RATE_LIMIT, limiter
-from app.core.security import create_access_token, hash_password, is_admin_email, verify_password
+from app.core.security import (
+    create_access_token,
+    hash_password,
+    is_admin_email,
+    verify_google_id_token,
+    verify_password,
+)
 from app.models.user import User
-from app.schemas.user import Token, UserCreate, UserLogin, UserOut, UserUpdate
+from app.schemas.user import GoogleLoginRequest, Token, UserCreate, UserLogin, UserOut, UserUpdate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -29,8 +35,40 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
 @limiter.limit(LOGIN_RATE_LIMIT)
 def login(request: Request, payload: UserLogin, db: Session = Depends(get_db)) -> Token:
     user = db.scalar(select(User).where(User.email == payload.email))
-    if user is None or not verify_password(payload.password, user.hashed_password):
+    if user is None or user.hashed_password is None or not verify_password(
+        payload.password, user.hashed_password
+    ):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    token = create_access_token(subject=str(user.id))
+    return Token(access_token=token)
+
+
+@router.post("/google", response_model=Token)
+@limiter.limit(LOGIN_RATE_LIMIT)
+def login_with_google(request: Request, payload: GoogleLoginRequest, db: Session = Depends(get_db)) -> Token:
+    try:
+        claims = verify_google_id_token(payload.credential)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token")
+
+    google_sub = claims["sub"]
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google account has no email")
+
+    user = db.scalar(select(User).where(User.google_sub == google_sub))
+    if user is None:
+        user = db.scalar(select(User).where(User.email == email))
+        if user is not None:
+            # conta ja existia (criada por email/senha) -- so linka a mesma conta ao Google
+            user.google_sub = google_sub
+        else:
+            user = User(name=claims.get("name") or email, email=email, google_sub=google_sub)
+            db.add(user)
+
+    db.commit()
+    db.refresh(user)
 
     token = create_access_token(subject=str(user.id))
     return Token(access_token=token)

@@ -41,6 +41,10 @@ async def login(email: str, password: str) -> dict:
     return await _request("POST", "/auth/login", json={"email": email, "password": password})
 
 
+async def login_with_google(credential: str) -> dict:
+    return await _request("POST", "/auth/google", json={"credential": credential})
+
+
 async def get_me(token: str) -> dict:
     return await _request("GET", "/auth/me", token=token)
 

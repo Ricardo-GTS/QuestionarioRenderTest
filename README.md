@@ -39,6 +39,7 @@ Ver `.env.example`. Nenhum valor de negocio (limiar de similaridade, tamanho do 
 | `JWT_SECRET` | Segredo usado para assinar o JWT | - |
 | `JWT_EXPIRE_MINUTES` | Validade do token em minutos | `10080` (7 dias) |
 | `ADMIN_EMAILS` | E-mails (separados por virgula) com acesso ao painel de admin | vazio |
+| `GOOGLE_CLIENT_ID` | Client ID OAuth do Google, habilita o botao "Entrar com Google" | vazio (feature desligada) |
 
 `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` no `.env` sao so o valor **inicial** (semeado na migration `0002`) — depois do primeiro boot, esses 3 ficam editaveis em runtime pelo painel de admin (`/admin/settings`), sem precisar reiniciar o container.
 
@@ -88,6 +89,15 @@ reflex run
 ## Fluxo critico (dedupe semantica)
 
 Ao criar uma pergunta (`POST /questions`): o backend gera o embedding do enunciado via Ollama, busca as perguntas ativas mais proximas por similaridade de cosseno no pgvector (indice HNSW) e, se a similaridade for `>= SIMILARITY_THRESHOLD`, descarta a pergunta e retorna 409 com a(s) pergunta(s) similar(es); caso contrario, persiste a pergunta com seu embedding.
+
+## Login com Google (opcional)
+
+Alem do login por e-mail/senha, ha um botao "Entrar com Google" nas paginas de login e cadastro
+(`reflex-google-auth`). E' puramente aditivo: nao muda o fluxo existente, so cria/vincula a conta
+pelo e-mail da conta Google. Requer criar um OAuth Client ID em
+https://console.developers.google.com/apis/credentials e configurar `GOOGLE_CLIENT_ID` no `.env`
+(mesmo valor pro backend, que verifica o id_token, e pro frontend, que renderiza o botao). Sem essa
+variavel definida, o botao aparece mas o login por Google falha -- o resto do app funciona normal.
 
 ## Moderacao
 
