@@ -42,7 +42,7 @@ docker-compose.override.yml
 # Ollama (modelos baixados localmente, fora do container)
 .ollama/
 ollama-data/
-models/
+/models/
 
 # Editores / IDEs
 .vscode/
