@@ -9,6 +9,10 @@ from questionario.state.auth_state import AuthState
 
 class AdminModerationState(rx.State):
     questions: list[dict] = []
+    # Reportes de todas as perguntas de "questions", "achatados" numa lista propria
+    # -- rx.foreach nao renderiza sobre um valor obtido indexando um dict generico
+    # (ex: question["reports"]), so' sobre uma var list[...] declarada no state.
+    reports: list[dict] = []
     loading: bool = False
     error_message: str = ""
     success_message: str = ""
@@ -32,7 +36,13 @@ class AdminModerationState(rx.State):
         self.loading = True
         self.error_message = ""
         try:
-            self.questions = await api_client.admin_list_questions(auth.token, status="reported")
+            questions = await api_client.admin_list_questions(auth.token, status="reported")
+            self.questions = questions
+            self.reports = [
+                {**report, "question_id": question["id"], "question_statement": question["statement"]}
+                for question in questions
+                for report in question["reports"]
+            ]
         except ApiError:
             self.error_message = "Nao foi possivel carregar as perguntas reportadas."
         finally:
@@ -55,6 +65,26 @@ class AdminModerationState(rx.State):
             self.success_message = "Pergunta removida."
         except ApiError:
             self.error_message = "Nao foi possivel remover a pergunta."
+            return
+        return await self.load_reported()
+
+    async def accept_report(self, report_id: int):
+        auth = await self.get_state(AuthState)
+        try:
+            await api_client.admin_accept_report(auth.token, report_id)
+            self.success_message = "Reporte aceito."
+        except ApiError:
+            self.error_message = "Nao foi possivel aceitar o reporte."
+            return
+        return await self.load_reported()
+
+    async def reject_report(self, report_id: int):
+        auth = await self.get_state(AuthState)
+        try:
+            await api_client.admin_reject_report(auth.token, report_id)
+            self.success_message = "Reporte rejeitado."
+        except ApiError:
+            self.error_message = "Nao foi possivel rejeitar o reporte."
             return
         return await self.load_reported()
 

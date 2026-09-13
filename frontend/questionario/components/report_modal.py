@@ -1,12 +1,19 @@
 import reflex as rx
 
-from questionario.state.report_state import ReportState
+from questionario.state.report_state import REASON_CATEGORIES, ReportState
 
 
 def report_modal() -> rx.Component:
     return rx.cond(
         ReportState.show_modal,
         rx.box(
+            # class_name forca as variaveis de CSS do tema claro do Radix (--gray-12
+            # etc.) dentro do modal, nao importa o tema claro/escuro do navegador --
+            # sem isso o texto (que segue o tema do navegador) fica ilegivel em cima
+            # do "background=white" fixo abaixo, em modo escuro. rx.theme(color_mode=...)
+            # nao funciona pra isso nesta versao do Reflex (0.9.10.post2): o prop de
+            # aparencia nao chega a ser emitido no componente Theme compilado --
+            # confirmado inspecionando o JSX gerado, entao aplicamos a classe direto.
             rx.box(
                 rx.vstack(
                     rx.heading("Reportar pergunta", size="4"),
@@ -20,7 +27,8 @@ def report_modal() -> rx.Component:
                         on_change=ReportState.set_reason,
                         width="100%",
                     ),
-                    rx.input(
+                    rx.select(
+                        REASON_CATEGORIES,
                         placeholder="Tipo de problema (opcional)",
                         value=ReportState.reason_category,
                         on_change=ReportState.set_reason_category,
@@ -33,6 +41,7 @@ def report_modal() -> rx.Component:
                     ),
                     spacing="3",
                 ),
+                class_name="radix-themes light light-theme",
                 background="white",
                 padding="1.5em",
                 border_radius="8px",

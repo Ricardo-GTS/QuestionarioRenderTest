@@ -16,6 +16,15 @@ def _user_row(user: dict) -> rx.Component:
             ),
             rx.text(user["email"], size="2", color="gray"),
             rx.text(f"Perguntas criadas: {user['question_count']}", size="2", color="gray"),
+            rx.hstack(
+                rx.text(f"Reportes aceitos: {user['accepted_reports_count']}", size="2", color="green"),
+                rx.text(f"Reportes rejeitados: {user['rejected_reports_count']}", size="2", color="gray"),
+                rx.text(
+                    f"Perguntas removidas: {user['questions_removed_count']}", size="2", color="red"
+                ),
+                spacing="3",
+                wrap="wrap",
+            ),
             align_items="start",
             spacing="1",
         ),

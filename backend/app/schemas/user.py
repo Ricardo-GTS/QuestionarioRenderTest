@@ -38,3 +38,9 @@ class UserOut(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class UserReputationOut(BaseModel):
+    accepted_reports_count: int = 0
+    rejected_reports_count: int = 0
+    questions_removed_count: int = 0

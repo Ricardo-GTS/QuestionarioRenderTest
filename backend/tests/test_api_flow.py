@@ -52,15 +52,16 @@ def test_report_flags_question_after_threshold(client, db_session):
     db_session.commit()
     question_id = question.id
 
-    resp = client.post(
-        "/auth/register", json={"name": "Rep", "email": "rep@example.com", "password": "senha1234"}
-    )
-    assert resp.status_code == 201
-    resp = client.post("/auth/login", json={"email": "rep@example.com", "password": "senha1234"})
-    token = resp.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
+    # Um reporte por pergunta por usuario (RF04) -- precisa de um reportador
+    # diferente pra cada reporte, nao da mesma pessoa reportando varias vezes.
+    for i in range(settings.report_threshold):
+        email = f"rep{i}@example.com"
+        resp = client.post("/auth/register", json={"name": "Rep", "email": email, "password": "senha1234"})
+        assert resp.status_code == 201
+        resp = client.post("/auth/login", json={"email": email, "password": "senha1234"})
+        token = resp.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
 
-    for _ in range(settings.report_threshold):
         resp = client.post(
             f"/questions/{question_id}/report",
             json={"reason": "resposta incorreta"},

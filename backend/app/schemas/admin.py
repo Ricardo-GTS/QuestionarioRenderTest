@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.models.enums import QuestionStatus
+from app.models.enums import QuestionStatus, ReportStatus
 
 
 class AppSettingsOut(BaseModel):
@@ -20,6 +20,19 @@ class AppSettingsUpdate(BaseModel):
     report_threshold: int | None = Field(default=None, gt=0)
 
 
+class AdminReportOut(BaseModel):
+    id: int
+    reporter_id: int
+    reporter_name: str
+    reason: str
+    reason_category: str | None
+    status: ReportStatus
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class AdminQuestionOut(BaseModel):
     id: int
     author_id: int
@@ -29,7 +42,7 @@ class AdminQuestionOut(BaseModel):
     status: QuestionStatus
     created_at: datetime
     report_count: int = 0
-    report_reasons: list[str] = []
+    reports: list[AdminReportOut] = []
 
     class Config:
         from_attributes = True
@@ -48,6 +61,9 @@ class AdminUserOut(BaseModel):
     created_at: datetime
     is_admin: bool = False
     question_count: int = 0
+    accepted_reports_count: int = 0
+    rejected_reports_count: int = 0
+    questions_removed_count: int = 0
 
     class Config:
         from_attributes = True

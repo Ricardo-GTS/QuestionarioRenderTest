@@ -8,10 +8,12 @@ from app.api.deps import get_current_admin, get_db
 from app.core.security import is_admin_email
 from app.models.enums import QuestionStatus
 from app.models.question import Question
+from app.models.report import Report
 from app.models.user import User
 from app.schemas.admin import (
     AdminQuestionOut,
     AdminQuestionUpdate,
+    AdminReportOut,
     AdminStatsOut,
     AdminUserOut,
     AppSettingsOut,
@@ -20,17 +22,36 @@ from app.schemas.admin import (
 from app.services import moderation as moderation_service
 from app.services.embeddings import EmbeddingServiceError
 from app.services.runtime_settings import get_effective_settings, update_settings
-from app.services.stats import compute_stats
+from app.services.stats import compute_all_users_reputation, compute_stats
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-def _with_report_info(question: Question) -> Question:
-    question.report_count = len(question.reports)
-    question.report_reasons = [report.reason for report in question.reports]
-    return question
+def _to_admin_question_out(question: Question) -> AdminQuestionOut:
+    return AdminQuestionOut(
+        id=question.id,
+        author_id=question.author_id,
+        statement=question.statement,
+        correct_answer=question.correct_answer,
+        category=question.category,
+        status=question.status,
+        created_at=question.created_at,
+        report_count=len(question.reports),
+        reports=[
+            AdminReportOut(
+                id=report.id,
+                reporter_id=report.reporter_id,
+                reporter_name=report.reporter.name,
+                reason=report.reason,
+                reason_category=report.reason_category,
+                status=report.status,
+                created_at=report.created_at,
+            )
+            for report in question.reports
+        ],
+    )
 
 
 @router.get("/settings", response_model=AppSettingsOut)
@@ -63,9 +84,9 @@ def list_questions(
     question_status: QuestionStatus = Query(default=QuestionStatus.REPORTED, alias="status"),
     _admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
-) -> list[Question]:
+) -> list[AdminQuestionOut]:
     questions = moderation_service.list_questions_by_status(db, question_status)
-    return [_with_report_info(q) for q in questions]
+    return [_to_admin_question_out(q) for q in questions]
 
 
 def _get_question_or_404(db: Session, question_id: int) -> Question:
@@ -80,10 +101,10 @@ def approve_question(
     question_id: int,
     _admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
-) -> Question:
+) -> AdminQuestionOut:
     question = _get_question_or_404(db, question_id)
     question = moderation_service.approve_question(db, question)
-    return _with_report_info(question)
+    return _to_admin_question_out(question)
 
 
 @router.put("/questions/{question_id}/remove", response_model=AdminQuestionOut)
@@ -91,10 +112,10 @@ def remove_question(
     question_id: int,
     _admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
-) -> Question:
+) -> AdminQuestionOut:
     question = _get_question_or_404(db, question_id)
     question = moderation_service.remove_question(db, question)
-    return _with_report_info(question)
+    return _to_admin_question_out(question)
 
 
 @router.put("/questions/{question_id}", response_model=AdminQuestionOut)
@@ -103,7 +124,7 @@ async def update_question(
     payload: AdminQuestionUpdate,
     _admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
-) -> Question:
+) -> AdminQuestionOut:
     question = _get_question_or_404(db, question_id)
     try:
         question = await moderation_service.update_question(
@@ -115,7 +136,48 @@ async def update_question(
         )
     except EmbeddingServiceError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    return _with_report_info(question)
+    return _to_admin_question_out(question)
+
+
+def _get_report_or_404(db: Session, report_id: int) -> Report:
+    report = db.get(Report, report_id)
+    if report is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+    return report
+
+
+def _to_admin_report_out(report: Report) -> AdminReportOut:
+    return AdminReportOut(
+        id=report.id,
+        reporter_id=report.reporter_id,
+        reporter_name=report.reporter.name,
+        reason=report.reason,
+        reason_category=report.reason_category,
+        status=report.status,
+        created_at=report.created_at,
+    )
+
+
+@router.put("/reports/{report_id}/accept", response_model=AdminReportOut)
+def accept_report(
+    report_id: int,
+    _admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> AdminReportOut:
+    report = _get_report_or_404(db, report_id)
+    report = moderation_service.accept_report(db, report)
+    return _to_admin_report_out(report)
+
+
+@router.put("/reports/{report_id}/reject", response_model=AdminReportOut)
+def reject_report(
+    report_id: int,
+    _admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> AdminReportOut:
+    report = _get_report_or_404(db, report_id)
+    report = moderation_service.reject_report(db, report)
+    return _to_admin_report_out(report)
 
 
 @router.get("/users", response_model=list[AdminUserOut])
@@ -124,9 +186,14 @@ def list_users(
     db: Session = Depends(get_db),
 ) -> list[User]:
     users = list(db.scalars(select(User).order_by(User.created_at)).all())
+    reputation_by_user = compute_all_users_reputation(db)
     for user in users:
         user.is_admin = is_admin_email(user.email)
         user.question_count = len(user.questions)
+        reputation = reputation_by_user.get(user.id, {})
+        user.accepted_reports_count = reputation.get("accepted_reports_count", 0)
+        user.rejected_reports_count = reputation.get("rejected_reports_count", 0)
+        user.questions_removed_count = reputation.get("questions_removed_count", 0)
     return users
 
 

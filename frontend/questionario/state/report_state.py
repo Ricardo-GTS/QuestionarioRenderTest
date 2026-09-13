@@ -4,6 +4,16 @@ from questionario import api_client
 from questionario.api_client import ApiError
 from questionario.state.auth_state import AuthState
 
+# Precisa bater exatamente com REASON_CATEGORIES em backend/app/schemas/report.py.
+REASON_CATEGORIES: list[str] = [
+    "Resposta incorreta",
+    "Enunciado ambiguo ou confuso",
+    "Conteudo ofensivo ou inadequado",
+    "Pergunta duplicada",
+    "Fora do tema",
+    "Outro",
+]
+
 
 class ReportState(rx.State):
     show_modal: bool = False
@@ -40,8 +50,11 @@ class ReportState(rx.State):
             await api_client.report_question(
                 auth.token, self.question_id, self.reason, self.reason_category or None
             )
-        except ApiError:
-            self.error_message = "Nao foi possivel enviar o reporte."
+        except ApiError as exc:
+            if exc.status_code == 409:
+                self.error_message = "Voce ja reportou essa pergunta."
+            else:
+                self.error_message = "Nao foi possivel enviar o reporte."
             return
         self.success_message = "Reporte enviado. Obrigado!"
         self.show_modal = False

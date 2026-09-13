@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.enums import QuestionStatus
+from app.models.enums import QuestionStatus, ReportStatus
 from app.models.question import Question
 from app.models.quiz_attempt import QuizAttempt
 from app.models.report import Report
@@ -16,6 +16,67 @@ def compute_average_score_percent(attempts: list[tuple[int, int]]) -> float | No
     if not percentages:
         return None
     return (sum(percentages) / len(percentages)) * 100
+
+
+def compute_user_reputation(db: Session, user_id: int) -> dict:
+    """Reputacao de UM usuario -- calculada na hora a partir de reports/questions
+    existentes, sem contador denormalizado (ver decisao registrada na memoria
+    do projeto/CLAUDE.md sobre o sistema de reportes)."""
+    accepted_reports = db.scalar(
+        select(func.count())
+        .select_from(Report)
+        .where(Report.reporter_id == user_id, Report.status == ReportStatus.ACCEPTED)
+    ) or 0
+    rejected_reports = db.scalar(
+        select(func.count())
+        .select_from(Report)
+        .where(Report.reporter_id == user_id, Report.status == ReportStatus.REJECTED)
+    ) or 0
+    questions_removed = db.scalar(
+        select(func.count())
+        .select_from(Question)
+        .where(Question.author_id == user_id, Question.status == QuestionStatus.REMOVED)
+    ) or 0
+    return {
+        "accepted_reports_count": accepted_reports,
+        "rejected_reports_count": rejected_reports,
+        "questions_removed_count": questions_removed,
+    }
+
+
+def compute_all_users_reputation(db: Session) -> dict[int, dict]:
+    """Mesma coisa que compute_user_reputation, mas pra todos os usuarios de uma
+    vez (3 queries agregadas em vez de N+1) -- usado na listagem do admin."""
+    accepted_by_user = dict(
+        db.execute(
+            select(Report.reporter_id, func.count())
+            .where(Report.status == ReportStatus.ACCEPTED)
+            .group_by(Report.reporter_id)
+        ).all()
+    )
+    rejected_by_user = dict(
+        db.execute(
+            select(Report.reporter_id, func.count())
+            .where(Report.status == ReportStatus.REJECTED)
+            .group_by(Report.reporter_id)
+        ).all()
+    )
+    removed_by_author = dict(
+        db.execute(
+            select(Question.author_id, func.count())
+            .where(Question.status == QuestionStatus.REMOVED)
+            .group_by(Question.author_id)
+        ).all()
+    )
+    user_ids = set(accepted_by_user) | set(rejected_by_user) | set(removed_by_author)
+    return {
+        user_id: {
+            "accepted_reports_count": accepted_by_user.get(user_id, 0),
+            "rejected_reports_count": rejected_by_user.get(user_id, 0),
+            "questions_removed_count": removed_by_author.get(user_id, 0),
+        }
+        for user_id in user_ids
+    }
 
 
 def compute_stats(db: Session) -> dict:

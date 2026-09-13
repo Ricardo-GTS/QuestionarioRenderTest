@@ -101,7 +101,9 @@ variavel definida, o botao aparece mas o login por Google falha -- o resto do ap
 
 ## Moderacao
 
-Cada reporte em uma pergunta (`POST /questions/{id}/report`) e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva).
+Cada reporte em uma pergunta (`POST /questions/{id}/report`) e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva). Um usuario so pode reportar a mesma pergunta uma vez, e escolhe o tipo de problema de uma lista fechada (resposta incorreta, enunciado ambiguo, conteudo ofensivo, duplicada, fora do tema, outro).
+
+O admin aceita ou rejeita cada reporte individualmente (`PUT /admin/reports/{id}/accept|reject`) -- acao separada de aprovar/remover a pergunta em si. Reportes aceitos contam pra reputacao de quem reportou; perguntas removidas contam como penalidade pra quem criou a pergunta. Os dois numeros ficam visiveis pro proprio usuario na pagina "Estatisticas" (`GET /stats/me`) e pro admin em Usuarios.
 
 ## Concorrencia e rate limiting
 

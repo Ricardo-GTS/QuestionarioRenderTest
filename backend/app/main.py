@@ -3,7 +3,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api.routers import admin, auth, health, questions, quiz, reports
+from app.api.routers import admin, auth, health, questions, quiz, reports, stats
 from app.core.logging import configure_logging
 from app.core.rate_limit import limiter
 
@@ -20,6 +20,7 @@ app.include_router(auth.router)
 app.include_router(questions.router)
 app.include_router(quiz.router)
 app.include_router(reports.router)
+app.include_router(stats.router)
 app.include_router(admin.router)
 
 

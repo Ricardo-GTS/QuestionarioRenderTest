@@ -84,6 +84,10 @@ async def report_question(token: str, question_id: int, reason: str, reason_cate
     )
 
 
+async def get_my_reputation(token: str) -> dict:
+    return await _request("GET", "/stats/me", token=token)
+
+
 # --- Admin ---------------------------------------------------------------
 
 
@@ -98,6 +102,14 @@ async def admin_update_settings(token: str, **fields) -> dict:
 
 async def admin_list_questions(token: str, status: str = "reported") -> list[dict]:
     return await _request("GET", "/admin/questions", token=token, params={"status": status})
+
+
+async def admin_accept_report(token: str, report_id: int) -> dict:
+    return await _request("PUT", f"/admin/reports/{report_id}/accept", token=token)
+
+
+async def admin_reject_report(token: str, report_id: int) -> dict:
+    return await _request("PUT", f"/admin/reports/{report_id}/reject", token=token)
 
 
 async def admin_approve_question(token: str, question_id: int) -> dict:

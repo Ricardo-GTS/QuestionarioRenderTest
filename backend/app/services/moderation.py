@@ -3,7 +3,7 @@ import logging
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.enums import QuestionStatus
+from app.models.enums import QuestionStatus, ReportStatus
 from app.models.question import Question
 from app.models.report import Report
 from app.services.embeddings import get_embedding
@@ -71,6 +71,26 @@ def remove_question(db: Session, question: Question) -> Question:
     db.refresh(question)
     logger.info("Pergunta id=%s removida por moderacao", question.id)
     return question
+
+
+def accept_report(db: Session, report: Report) -> Report:
+    """Veredito individual do admin sobre ESTE reporte -- independente do
+    status da pergunta (Aprovar/Remover continuam sendo acoes separadas).
+    Alimenta a reputacao de quem reportou (services/stats.compute_user_reputation).
+    """
+    report.status = ReportStatus.ACCEPTED
+    db.commit()
+    db.refresh(report)
+    logger.info("Reporte id=%s aceito por moderacao", report.id)
+    return report
+
+
+def reject_report(db: Session, report: Report) -> Report:
+    report.status = ReportStatus.REJECTED
+    db.commit()
+    db.refresh(report)
+    logger.info("Reporte id=%s rejeitado por moderacao", report.id)
+    return report
 
 
 async def update_question(

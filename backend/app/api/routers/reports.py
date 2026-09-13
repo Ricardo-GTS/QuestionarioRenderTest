@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
@@ -21,6 +22,12 @@ def report_question(
     question = db.get(Question, question_id)
     if question is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
+
+    existing = db.scalar(
+        select(Report).where(Report.question_id == question_id, Report.reporter_id == current_user.id)
+    )
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Voce ja reportou esta pergunta")
 
     return register_report(
         db,

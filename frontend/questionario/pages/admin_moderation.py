@@ -45,6 +45,43 @@ def _edit_form() -> rx.Component:
     )
 
 
+def _report_row(report: dict) -> rx.Component:
+    return rx.box(
+        rx.vstack(
+            rx.text(report["question_statement"], size="2", color="gray"),
+            rx.text(f"{report['reporter_name']}: {report['reason']}", weight="bold"),
+            rx.cond(report["reason_category"], rx.badge(report["reason_category"])),
+            rx.hstack(
+                rx.badge(report["status"]),
+                rx.spacer(),
+                rx.button(
+                    "Aceitar",
+                    on_click=AdminModerationState.accept_report(report["id"]),
+                    size="1",
+                    color_scheme="green",
+                ),
+                rx.button(
+                    "Rejeitar",
+                    on_click=AdminModerationState.reject_report(report["id"]),
+                    size="1",
+                    color_scheme="red",
+                    variant="soft",
+                ),
+                width="100%",
+                align="center",
+                spacing="2",
+            ),
+            align_items="start",
+            spacing="2",
+            width="100%",
+        ),
+        padding="1em",
+        border="1px solid #e2e2e2",
+        border_radius="8px",
+        width="100%",
+    )
+
+
 def _question_row(question: dict) -> rx.Component:
     return rx.vstack(
         rx.hstack(
@@ -106,6 +143,17 @@ def admin_moderation_page() -> rx.Component:
                     rx.foreach(AdminModerationState.questions, _question_row),
                     rx.text("Nenhuma pergunta reportada no momento."),
                 ),
+            ),
+            rx.heading("Reportes individuais", size="4"),
+            rx.text(
+                "Aceitar/Rejeitar um reporte e' independente de Aprovar/Remover a pergunta acima.",
+                size="2",
+                color="gray",
+            ),
+            rx.cond(
+                AdminModerationState.reports,
+                rx.foreach(AdminModerationState.reports, _report_row),
+                rx.text("Nenhum reporte no momento."),
             ),
             spacing="3",
             padding="1.5em",
