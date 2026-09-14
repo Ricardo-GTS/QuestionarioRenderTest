@@ -4,16 +4,14 @@ from questionario.components.admin_nav import admin_nav
 from questionario.components.navbar import navbar
 from questionario.state.admin_state import AdminStatsState
 from questionario.state.auth_state import AuthState
+from questionario.style import FALSE_COLOR, FORCE_LIGHT_CLASS, card_style
 
 
 def _stat_box(label: str, value) -> rx.Component:
     return rx.box(
-        rx.text(label, size="2", color="gray"),
-        rx.text(value, size="6", weight="bold"),
-        padding="1em",
-        border="1px solid #e2e2e2",
-        border_radius="8px",
-        min_width="160px",
+        rx.text(label, size="2", color="var(--gray-11)"),
+        rx.text(value, size="6", weight="bold", font_family="'Lora', serif"),
+        **card_style(min_width="160px", width="auto"),
     )
 
 
@@ -21,9 +19,10 @@ def _category_row(item: dict) -> rx.Component:
     return rx.hstack(
         rx.text(item["category"]),
         rx.spacer(),
-        rx.text(item["count"]),
+        rx.text(item["count"], weight="bold"),
         width="100%",
-        padding_y="0.25em",
+        padding_y="0.4em",
+        border_bottom="1px solid var(--gray-5)",
     )
 
 
@@ -33,10 +32,10 @@ def admin_dashboard_page() -> rx.Component:
         admin_nav(),
         rx.cond(
             AdminStatsState.error_message != "",
-            rx.text(AdminStatsState.error_message, color="red", padding="1em"),
+            rx.text(AdminStatsState.error_message, color=FALSE_COLOR, weight="bold", padding="1em"),
         ),
         rx.vstack(
-            rx.heading("Visao geral"),
+            rx.heading("Visao geral", size="7"),
             rx.hstack(
                 _stat_box("Usuarios", AdminStatsState.total_users),
                 _stat_box("Perguntas ativas", AdminStatsState.total_questions_active),
@@ -71,4 +70,5 @@ def admin_dashboard_page() -> rx.Component:
         on_mount=[AuthState.require_admin, AdminStatsState.load_stats],
         width="100%",
         spacing="0",
+        class_name=FORCE_LIGHT_CLASS,
     )

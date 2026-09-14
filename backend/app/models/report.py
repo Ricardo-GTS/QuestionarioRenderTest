@@ -17,8 +17,9 @@ class Report(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
     reporter_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
-    reason_category: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # Opcional -- so obrigatorio quando reason_category == "Outro" (ver ReportCreate).
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reason_category: Mapped[str] = mapped_column(String(60), nullable=False)
     # Veredito do admin sobre ESTE reporte especifico (independente do status da
     # pergunta) -- alimenta a reputacao de quem reportou (ver services/stats.py).
     status: Mapped[ReportStatus] = mapped_column(

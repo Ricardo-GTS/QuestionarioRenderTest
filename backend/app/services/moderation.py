@@ -21,8 +21,8 @@ def register_report(
     db: Session,
     question: Question,
     reporter_id: int,
-    reason: str,
-    reason_category: str | None,
+    reason: str | None,
+    reason_category: str,
 ) -> Report:
     report = Report(
         question_id=question.id,
@@ -57,7 +57,25 @@ def list_questions_by_status(db: Session, status_filter: QuestionStatus) -> list
     return list(db.scalars(stmt).all())
 
 
+def list_questions_with_pending_reports(db: Session) -> list[Question]:
+    """Fila de moderacao: perguntas com pelo menos 1 reporte ainda pendente,
+    independente do status da pergunta (active/reported/removed) -- assim um
+    reporte nunca fica "preso" inacessivel so' porque a pergunta ja saiu do
+    status "reported" (ex: foi removida antes do reporte ser resolvido)."""
+    stmt = (
+        select(Question)
+        .join(Report, Report.question_id == Question.id)
+        .where(Report.status == ReportStatus.PENDING)
+        .distinct()
+        .order_by(Question.created_at)
+    )
+    return list(db.scalars(stmt).all())
+
+
 def approve_question(db: Session, question: Question) -> Question:
+    """Usado pra reativar uma pergunta ja removida (aba "Perguntas Removidas").
+    Nao mexe em reportes -- por essa via, os reportes dela ja foram resolvidos
+    antes (ver resolve_reported_question)."""
     question.status = QuestionStatus.ACTIVE
     db.commit()
     db.refresh(question)
@@ -65,32 +83,28 @@ def approve_question(db: Session, question: Question) -> Question:
     return question
 
 
-def remove_question(db: Session, question: Question) -> Question:
-    question.status = QuestionStatus.REMOVED
+def resolve_reported_question(db: Session, question: Question, approve_removal: bool) -> Question:
+    """Decisao unica do admin sobre uma pergunta na fila de moderacao:
+    "Aprovar Remocao" (remove a pergunta + aceita os reportes pendentes dela,
+    validando quem reportou) ou "Rejeitar Remocao" (mantem/reativa a pergunta
+    + rejeita os reportes pendentes, sem validar quem reportou). Resolve TODOS
+    os reportes pendentes da pergunta de uma vez, nao um por um.
+    """
+    question.status = QuestionStatus.REMOVED if approve_removal else QuestionStatus.ACTIVE
+    new_report_status = ReportStatus.ACCEPTED if approve_removal else ReportStatus.REJECTED
+    for report in question.reports:
+        if report.status == ReportStatus.PENDING:
+            report.status = new_report_status
+
     db.commit()
     db.refresh(question)
-    logger.info("Pergunta id=%s removida por moderacao", question.id)
+    logger.info(
+        "Pergunta id=%s: remocao %s, reportes pendentes marcados como %s",
+        question.id,
+        "aprovada" if approve_removal else "rejeitada",
+        new_report_status.value,
+    )
     return question
-
-
-def accept_report(db: Session, report: Report) -> Report:
-    """Veredito individual do admin sobre ESTE reporte -- independente do
-    status da pergunta (Aprovar/Remover continuam sendo acoes separadas).
-    Alimenta a reputacao de quem reportou (services/stats.compute_user_reputation).
-    """
-    report.status = ReportStatus.ACCEPTED
-    db.commit()
-    db.refresh(report)
-    logger.info("Reporte id=%s aceito por moderacao", report.id)
-    return report
-
-
-def reject_report(db: Session, report: Report) -> Report:
-    report.status = ReportStatus.REJECTED
-    db.commit()
-    db.refresh(report)
-    logger.info("Reporte id=%s rejeitado por moderacao", report.id)
-    return report
 
 
 async def update_question(

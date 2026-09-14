@@ -8,7 +8,6 @@ from app.api.deps import get_current_admin, get_db
 from app.core.security import is_admin_email
 from app.models.enums import QuestionStatus
 from app.models.question import Question
-from app.models.report import Report
 from app.models.user import User
 from app.schemas.admin import (
     AdminQuestionOut,
@@ -33,6 +32,7 @@ def _to_admin_question_out(question: Question) -> AdminQuestionOut:
     return AdminQuestionOut(
         id=question.id,
         author_id=question.author_id,
+        author_name=question.author.name,
         statement=question.statement,
         correct_answer=question.correct_answer,
         category=question.category,
@@ -89,6 +89,15 @@ def list_questions(
     return [_to_admin_question_out(q) for q in questions]
 
 
+@router.get("/questions/pending-reports", response_model=list[AdminQuestionOut])
+def list_questions_pending_reports(
+    _admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> list[AdminQuestionOut]:
+    questions = moderation_service.list_questions_with_pending_reports(db)
+    return [_to_admin_question_out(q) for q in questions]
+
+
 def _get_question_or_404(db: Session, question_id: int) -> Question:
     question = db.get(Question, question_id)
     if question is None:
@@ -107,14 +116,29 @@ def approve_question(
     return _to_admin_question_out(question)
 
 
-@router.put("/questions/{question_id}/remove", response_model=AdminQuestionOut)
-def remove_question(
+@router.put("/questions/{question_id}/approve-removal", response_model=AdminQuestionOut)
+def approve_removal(
     question_id: int,
     _admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ) -> AdminQuestionOut:
+    """Admin concorda com quem reportou: remove a pergunta e aceita os
+    reportes pendentes dela (credita a reputacao de quem reportou)."""
     question = _get_question_or_404(db, question_id)
-    question = moderation_service.remove_question(db, question)
+    question = moderation_service.resolve_reported_question(db, question, approve_removal=True)
+    return _to_admin_question_out(question)
+
+
+@router.put("/questions/{question_id}/reject-removal", response_model=AdminQuestionOut)
+def reject_removal(
+    question_id: int,
+    _admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> AdminQuestionOut:
+    """Admin discorda de quem reportou: mantem/reativa a pergunta e rejeita
+    os reportes pendentes dela."""
+    question = _get_question_or_404(db, question_id)
+    question = moderation_service.resolve_reported_question(db, question, approve_removal=False)
     return _to_admin_question_out(question)
 
 
@@ -137,47 +161,6 @@ async def update_question(
     except EmbeddingServiceError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     return _to_admin_question_out(question)
-
-
-def _get_report_or_404(db: Session, report_id: int) -> Report:
-    report = db.get(Report, report_id)
-    if report is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
-    return report
-
-
-def _to_admin_report_out(report: Report) -> AdminReportOut:
-    return AdminReportOut(
-        id=report.id,
-        reporter_id=report.reporter_id,
-        reporter_name=report.reporter.name,
-        reason=report.reason,
-        reason_category=report.reason_category,
-        status=report.status,
-        created_at=report.created_at,
-    )
-
-
-@router.put("/reports/{report_id}/accept", response_model=AdminReportOut)
-def accept_report(
-    report_id: int,
-    _admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db),
-) -> AdminReportOut:
-    report = _get_report_or_404(db, report_id)
-    report = moderation_service.accept_report(db, report)
-    return _to_admin_report_out(report)
-
-
-@router.put("/reports/{report_id}/reject", response_model=AdminReportOut)
-def reject_report(
-    report_id: int,
-    _admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db),
-) -> AdminReportOut:
-    report = _get_report_or_404(db, report_id)
-    report = moderation_service.reject_report(db, report)
-    return _to_admin_report_out(report)
 
 
 @router.get("/users", response_model=list[AdminUserOut])

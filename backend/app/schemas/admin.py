@@ -24,8 +24,8 @@ class AdminReportOut(BaseModel):
     id: int
     reporter_id: int
     reporter_name: str
-    reason: str
-    reason_category: str | None
+    reason: str | None
+    reason_category: str
     status: ReportStatus
     created_at: datetime
 
@@ -36,6 +36,7 @@ class AdminReportOut(BaseModel):
 class AdminQuestionOut(BaseModel):
     id: int
     author_id: int
+    author_name: str
     statement: str
     correct_answer: bool
     category: str | None

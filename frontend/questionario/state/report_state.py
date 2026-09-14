@@ -43,12 +43,15 @@ class ReportState(rx.State):
     async def submit_report(self):
         auth = await self.get_state(AuthState)
         self.error_message = ""
-        if not self.reason.strip():
-            self.error_message = "Descreva o motivo do reporte."
+        if not self.reason_category:
+            self.error_message = "Selecione o tipo de problema."
+            return
+        if self.reason_category == "Outro" and not self.reason.strip():
+            self.error_message = 'Descreva o motivo quando o tipo de problema for "Outro".'
             return
         try:
             await api_client.report_question(
-                auth.token, self.question_id, self.reason, self.reason_category or None
+                auth.token, self.question_id, self.reason.strip() or None, self.reason_category
             )
         except ApiError as exc:
             if exc.status_code == 409:

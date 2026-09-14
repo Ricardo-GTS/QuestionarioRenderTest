@@ -101,9 +101,9 @@ variavel definida, o botao aparece mas o login por Google falha -- o resto do ap
 
 ## Moderacao
 
-Cada reporte em uma pergunta (`POST /questions/{id}/report`) e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva). Um usuario so pode reportar a mesma pergunta uma vez, e escolhe o tipo de problema de uma lista fechada (resposta incorreta, enunciado ambiguo, conteudo ofensivo, duplicada, fora do tema, outro).
+Cada reporte em uma pergunta (`POST /questions/{id}/report`) e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva). Um usuario so pode reportar a mesma pergunta uma vez. O tipo de problema (lista fechada: resposta incorreta, enunciado ambiguo, conteudo ofensivo, duplicada, fora do tema, outro) e' obrigatorio; o motivo em texto livre e' opcional, exceto quando o tipo e' "outro".
 
-O admin aceita ou rejeita cada reporte individualmente (`PUT /admin/reports/{id}/accept|reject`) -- acao separada de aprovar/remover a pergunta em si. Reportes aceitos contam pra reputacao de quem reportou; perguntas removidas contam como penalidade pra quem criou a pergunta. Os dois numeros ficam visiveis pro proprio usuario na pagina "Estatisticas" (`GET /stats/me`) e pro admin em Usuarios.
+A fila de moderacao (`/admin/moderation`) lista perguntas com reporte pendente, independente do status delas -- nao so as que ja atingiram `REPORT_THRESHOLD`. O admin resolve com uma decisao so por pergunta: **Aprovar Remocao** (remove a pergunta, aceita os reportes pendentes) ou **Rejeitar Remocao** (mantem/reativa a pergunta, rejeita os reportes pendentes). Uma pergunta removida pode ser reativada e editada na aba "Perguntas Removidas". Reportes aceitos contam pra reputacao de quem reportou; perguntas removidas contam como penalidade pra quem criou a pergunta -- os dois numeros ficam visiveis pro proprio usuario na pagina "Estatisticas" (`GET /stats/me`) e pro admin em Usuarios.
 
 ## Concorrencia e rate limiting
 
@@ -116,8 +116,9 @@ O admin aceita ou rejeita cada reporte individualmente (`PUT /admin/reports/{id}
 Quem estiver listado em `ADMIN_EMAILS` vira admin automaticamente ao logar (sem cadastro especial, sem coluna de role no banco). Acesso em `/admin`:
 
 - **Dashboard** (`/admin`) — totais de usuarios/perguntas/reportes, taxa media de acerto, perguntas e reportes por categoria.
-- **Moderacao** (`/admin/moderation`) — lista perguntas reportadas, aprova (volta pra `active`), remove (`removed`) ou edita o enunciado/resposta/categoria (recalcula o embedding se o enunciado mudar).
-- **Usuarios** (`/admin/users`) — lista com contagem de perguntas por usuario, exclusao de conta (com confirmacao; nao permite excluir a propria conta admin por ali).
+- **Moderacao** (`/admin/moderation`) — lista perguntas com reporte pendente (mostra resposta cadastrada e quem reportou), Aprova Remocao/Rejeita Remocao (decisao unica que resolve a pergunta e todos os reportes pendentes dela) ou edita o enunciado/resposta/categoria (recalcula o embedding se o enunciado mudar).
+- **Perguntas Removidas** (`/admin/removed`) — lista perguntas removidas, com opcao de editar e reativar (volta pra `active`).
+- **Usuarios** (`/admin/users`) — lista com contagem de perguntas por usuario, reputacao (reportes aceitos/rejeitados, perguntas removidas), exclusao de conta (com confirmacao; nao permite excluir a propria conta admin por ali).
 - **Configuracoes** (`/admin/settings`) — edita `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` em runtime.
 
 ## Fora do escopo do MVP

@@ -2,17 +2,58 @@ import reflex as rx
 
 from questionario import api_client
 from questionario.api_client import ApiError
+from questionario.models import AdminQuestionItem, question_item_from_api
 from questionario.state.auth_state import AuthState
 
 # --- Moderacao -------------------------------------------------------------
 
 
 class AdminModerationState(rx.State):
+    # rx.PropsBase (nao dict) pra rx.foreach aninhar de verdade sobre
+    # question.reports -- ver questionario/models.py.
+    questions: list[AdminQuestionItem] = []
+    loading: bool = False
+    error_message: str = ""
+    success_message: str = ""
+
+    async def load_reported(self):
+        auth = await self.get_state(AuthState)
+        self.loading = True
+        self.error_message = ""
+        try:
+            questions = await api_client.admin_list_pending_reports(auth.token)
+            self.questions = [question_item_from_api(q) for q in questions]
+        except ApiError:
+            self.error_message = "Nao foi possivel carregar as perguntas reportadas."
+        finally:
+            self.loading = False
+
+    async def approve_removal(self, question_id: int):
+        auth = await self.get_state(AuthState)
+        try:
+            await api_client.admin_approve_removal(auth.token, question_id)
+            self.success_message = "Remocao aprovada -- pergunta removida, reportes aceitos."
+        except ApiError:
+            self.error_message = "Nao foi possivel aprovar a remocao."
+            return
+        return await self.load_reported()
+
+    async def reject_removal(self, question_id: int):
+        auth = await self.get_state(AuthState)
+        try:
+            await api_client.admin_reject_removal(auth.token, question_id)
+            self.success_message = "Remocao rejeitada -- pergunta mantida ativa, reportes rejeitados."
+        except ApiError:
+            self.error_message = "Nao foi possivel rejeitar a remocao."
+            return
+        return await self.load_reported()
+
+
+# --- Perguntas removidas ------------------------------------------------------
+
+
+class AdminRemovedState(rx.State):
     questions: list[dict] = []
-    # Reportes de todas as perguntas de "questions", "achatados" numa lista propria
-    # -- rx.foreach nao renderiza sobre um valor obtido indexando um dict generico
-    # (ex: question["reports"]), so' sobre uma var list[...] declarada no state.
-    reports: list[dict] = []
     loading: bool = False
     error_message: str = ""
     success_message: str = ""
@@ -31,62 +72,26 @@ class AdminModerationState(rx.State):
     def set_edit_category(self, value: str) -> None:
         self.edit_category = value
 
-    async def load_reported(self):
+    async def load_removed(self):
         auth = await self.get_state(AuthState)
         self.loading = True
         self.error_message = ""
         try:
-            questions = await api_client.admin_list_questions(auth.token, status="reported")
-            self.questions = questions
-            self.reports = [
-                {**report, "question_id": question["id"], "question_statement": question["statement"]}
-                for question in questions
-                for report in question["reports"]
-            ]
+            self.questions = await api_client.admin_list_questions(auth.token, status="removed")
         except ApiError:
-            self.error_message = "Nao foi possivel carregar as perguntas reportadas."
+            self.error_message = "Nao foi possivel carregar as perguntas removidas."
         finally:
             self.loading = False
 
-    async def approve(self, question_id: int):
+    async def reactivate(self, question_id: int):
         auth = await self.get_state(AuthState)
         try:
             await api_client.admin_approve_question(auth.token, question_id)
-            self.success_message = "Pergunta aprovada."
+            self.success_message = "Pergunta reativada."
         except ApiError:
-            self.error_message = "Nao foi possivel aprovar a pergunta."
+            self.error_message = "Nao foi possivel reativar a pergunta."
             return
-        return await self.load_reported()
-
-    async def remove(self, question_id: int):
-        auth = await self.get_state(AuthState)
-        try:
-            await api_client.admin_remove_question(auth.token, question_id)
-            self.success_message = "Pergunta removida."
-        except ApiError:
-            self.error_message = "Nao foi possivel remover a pergunta."
-            return
-        return await self.load_reported()
-
-    async def accept_report(self, report_id: int):
-        auth = await self.get_state(AuthState)
-        try:
-            await api_client.admin_accept_report(auth.token, report_id)
-            self.success_message = "Reporte aceito."
-        except ApiError:
-            self.error_message = "Nao foi possivel aceitar o reporte."
-            return
-        return await self.load_reported()
-
-    async def reject_report(self, report_id: int):
-        auth = await self.get_state(AuthState)
-        try:
-            await api_client.admin_reject_report(auth.token, report_id)
-            self.success_message = "Reporte rejeitado."
-        except ApiError:
-            self.error_message = "Nao foi possivel rejeitar o reporte."
-            return
-        return await self.load_reported()
+        return await self.load_removed()
 
     def start_edit(self, question: dict) -> None:
         self.editing_id = question["id"]
@@ -112,7 +117,7 @@ class AdminModerationState(rx.State):
             self.error_message = "Nao foi possivel atualizar a pergunta."
             return
         self.editing_id = 0
-        return await self.load_reported()
+        return await self.load_removed()
 
 
 # --- Usuarios ---------------------------------------------------------------

@@ -64,7 +64,7 @@ def test_report_flags_question_after_threshold(client, db_session):
 
         resp = client.post(
             f"/questions/{question_id}/report",
-            json={"reason": "resposta incorreta"},
+            json={"reason": "resposta incorreta", "reason_category": "Resposta incorreta"},
             headers=headers,
         )
         assert resp.status_code == 201

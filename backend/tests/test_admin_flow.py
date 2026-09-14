@@ -58,7 +58,9 @@ def test_admin_can_moderate_manage_and_configure(client, db_session):
     db_session.add(question)
     db_session.commit()
 
-    db_session.add(Report(question_id=question.id, reporter_id=author.id, reason="motivo teste"))
+    db_session.add(
+        Report(question_id=question.id, reporter_id=author.id, reason="motivo teste", reason_category="Outro")
+    )
     db_session.commit()
     question_id = question.id
 

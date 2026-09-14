@@ -75,7 +75,7 @@ async def submit_quiz(token: str, answers: list[dict]) -> dict:
     return await _request("POST", "/quiz/submit", token=token, json={"answers": answers})
 
 
-async def report_question(token: str, question_id: int, reason: str, reason_category: str | None) -> dict:
+async def report_question(token: str, question_id: int, reason: str | None, reason_category: str) -> dict:
     return await _request(
         "POST",
         f"/questions/{question_id}/report",
@@ -104,20 +104,21 @@ async def admin_list_questions(token: str, status: str = "reported") -> list[dic
     return await _request("GET", "/admin/questions", token=token, params={"status": status})
 
 
-async def admin_accept_report(token: str, report_id: int) -> dict:
-    return await _request("PUT", f"/admin/reports/{report_id}/accept", token=token)
+async def admin_list_pending_reports(token: str) -> list[dict]:
+    return await _request("GET", "/admin/questions/pending-reports", token=token)
 
 
-async def admin_reject_report(token: str, report_id: int) -> dict:
-    return await _request("PUT", f"/admin/reports/{report_id}/reject", token=token)
+async def admin_approve_removal(token: str, question_id: int) -> dict:
+    return await _request("PUT", f"/admin/questions/{question_id}/approve-removal", token=token)
+
+
+async def admin_reject_removal(token: str, question_id: int) -> dict:
+    return await _request("PUT", f"/admin/questions/{question_id}/reject-removal", token=token)
 
 
 async def admin_approve_question(token: str, question_id: int) -> dict:
+    """Reativa uma pergunta ja removida -- usado na aba "Perguntas Removidas"."""
     return await _request("PUT", f"/admin/questions/{question_id}/approve", token=token)
-
-
-async def admin_remove_question(token: str, question_id: int) -> dict:
-    return await _request("PUT", f"/admin/questions/{question_id}/remove", token=token)
 
 
 async def admin_update_question(token: str, question_id: int, **fields) -> dict:
