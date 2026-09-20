@@ -41,10 +41,12 @@ services:
     command: ["ollama pull ${OLLAMA_EMBED_MODEL}"]
     restart: "no"
 
-  backend:
-    build: ./backend
+  django:
+    build: ./questionario_django
     restart: unless-stopped
     env_file: .env
+    environment:
+      DJANGO_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
       db:
         condition: service_healthy
@@ -52,15 +54,6 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
-
-  frontend:
-    build: ./frontend
-    restart: unless-stopped
-    env_file: .env
-    depends_on:
-      - backend
-    ports:
-      - "3000:3000"
 
 volumes:
   pgdata:

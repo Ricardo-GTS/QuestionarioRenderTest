@@ -1,0 +1,35 @@
+{% extends "core/base.html" %}
+{% block title %}Admin - Visao Geral{% endblock %}
+{% block content %}
+{% include "core/_admin_nav.html" %}
+<h1>Visao Geral</h1>
+<div class="card">
+  <p>Usuarios: <strong>{{ stats.total_users }}</strong></p>
+  <p>Perguntas ativas: <strong>{{ stats.active_questions }}</strong></p>
+  <p>Perguntas reportadas: <strong>{{ stats.reported_questions }}</strong></p>
+  <p>Perguntas removidas: <strong>{{ stats.removed_questions }}</strong></p>
+  <p>Total de reportes: <strong>{{ stats.total_reports }}</strong></p>
+  <p>Tentativas de questionario: <strong>{{ stats.total_quiz_attempts }}</strong></p>
+  <p>Taxa media de acerto:
+    <strong>{% if stats.average_score_percent is not None %}{{ stats.average_score_percent|floatformat:1 }}%{% else %}-{% endif %}</strong>
+  </p>
+</div>
+
+<div class="card">
+  <h2>Perguntas por categoria</h2>
+  {% for row in stats.questions_by_category %}
+    <p>{{ row.category }}: {{ row.count }}</p>
+  {% empty %}
+    <p>Nenhuma pergunta cadastrada.</p>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Reportes por categoria</h2>
+  {% for row in stats.reports_by_category %}
+    <p>{{ row.category }}: {{ row.count }}</p>
+  {% empty %}
+    <p>Nenhum reporte registrado.</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,68 @@
+/* Reset + tipografia global -- porte de frontend/questionario/style.py::GLOBAL_STYLE */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--color-ink);
+  margin-top: 0;
+}
+
+a {
+  color: var(--color-ink);
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5em 1em;
+}
+
+form p {
+  margin: 0.75em 0;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25em;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  width: 100%;
+  padding: 0.5em;
+  border: 1.5px solid var(--color-ink);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  background: white;
+  color: var(--color-ink);
+}
+
+.errorlist {
+  color: var(--color-false);
+  font-weight: 600;
+  list-style: none;
+  padding: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

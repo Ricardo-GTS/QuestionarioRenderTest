@@ -1,0 +1,27 @@
+{% extends "core/base.html" %}
+{% block title %}Usuarios - Admin{% endblock %}
+{% block content %}
+{% include "core/_admin_nav.html" %}
+<h1>Usuarios</h1>
+{% for u in users %}
+<div class="card" id="user-{{ u.id }}">
+  <strong>{{ u.name }}</strong> ({{ u.email }})
+  {% if u.is_admin %}<span class="chip chip--accent">admin</span>{% endif %}
+  <p>
+    Perguntas criadas: {{ u.question_count }} ·
+    Reportes aceitos: {{ u.accepted_reports_count }} ·
+    Reportes rejeitados: {{ u.rejected_reports_count }} ·
+    Perguntas removidas: {{ u.questions_removed_count }}
+  </p>
+  <form method="post" action="{% url 'accounts:admin_delete_user' u.id %}"
+        hx-post="{% url 'accounts:admin_delete_user' u.id %}"
+        hx-confirm="Excluir usuario {{ u.email }}?"
+        hx-target="#user-{{ u.id }}" hx-swap="outerHTML">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Excluir</button>
+  </form>
+</div>
+{% empty %}
+<p>Nenhum usuario cadastrado.</p>
+{% endfor %}
+{% endblock %}

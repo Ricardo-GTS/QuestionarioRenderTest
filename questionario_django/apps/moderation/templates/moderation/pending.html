@@ -1,0 +1,11 @@
+{% extends "core/base.html" %}
+{% block title %}Admin - Moderacao{% endblock %}
+{% block content %}
+{% include "core/_admin_nav.html" %}
+<h1>Moderacao</h1>
+{% for item in items %}
+  {% include "moderation/_question_card.html" %}
+{% empty %}
+  <p>Nenhuma pergunta com reportes pendentes.</p>
+{% endfor %}
+{% endblock %}

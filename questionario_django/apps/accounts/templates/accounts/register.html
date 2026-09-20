@@ -1,0 +1,40 @@
+{% extends "core/base.html" %}
+{% block title %}Cadastrar - Questionario{% endblock %}
+{% block content %}
+<h1>Cadastrar</h1>
+<div class="card">
+  <form method="post" action="{% url 'accounts:register' %}">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p>
+      <label for="id_name">Nome</label>
+      {{ form.name }}
+      {{ form.name.errors }}
+    </p>
+    <p>
+      <label for="id_email">E-mail</label>
+      {{ form.email }}
+      {{ form.email.errors }}
+    </p>
+    <p>
+      <label for="id_password">Senha</label>
+      {{ form.password }}
+      {{ form.password.errors }}
+    </p>
+    <button type="submit" class="btn btn-primary">Cadastrar</button>
+  </form>
+</div>
+
+<div class="card">
+  {% if google_client_id %}
+    <div id="g_id_onload"
+         data-client_id="{{ google_client_id }}"
+         data-login_uri="{% url 'accounts:google_login' %}">
+    </div>
+    <div class="g_id_signin" data-type="standard"></div>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  {% endif %}
+</div>
+
+<p>Ja tem conta? <a href="{% url 'accounts:login' %}">Entrar</a></p>
+{% endblock %}

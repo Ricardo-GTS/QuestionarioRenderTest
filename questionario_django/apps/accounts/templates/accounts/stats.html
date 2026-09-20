@@ -1,0 +1,14 @@
+{% extends "core/base.html" %}
+{% block title %}Estatisticas - Questionario{% endblock %}
+{% block content %}
+<h1>Minhas Estatisticas</h1>
+<div class="card">
+  <p>Reportes aceitos (que voce fez): <strong>{{ reputation.accepted_reports_count }}</strong></p>
+</div>
+<div class="card">
+  <p>Reportes rejeitados (que voce fez): <strong>{{ reputation.rejected_reports_count }}</strong></p>
+</div>
+<div class="card">
+  <p>Perguntas suas removidas por reporte: <strong>{{ reputation.questions_removed_count }}</strong></p>
+</div>
+{% endblock %}

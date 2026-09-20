@@ -1,0 +1,20 @@
+{% load status_labels %}
+<div class="card" id="question-{{ item.question.id }}">
+  <p><strong>{{ item.question.statement }}</strong></p>
+  <p>Autor: {{ item.question.author.name }} · Resposta: {% if item.question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}
+    {% if item.question.category %}· Categoria: {{ item.question.category }}{% endif %}
+    · <span class="chip chip--{{ item.question.status|status_chip_kind }}">{{ item.question.status|status_label }}</span>
+  </p>
+  <h3>Reportes pendentes ({{ item.reports|length }})</h3>
+  {% for report in item.reports %}
+    <p>{{ report.reporter.name }} -- {{ report.reason_category }}{% if report.reason %}: {{ report.reason }}{% endif %}</p>
+  {% endfor %}
+  <form style="display:inline" hx-post="{% url 'moderation:approve_removal' item.question.id %}" hx-target="#question-{{ item.question.id }}" hx-swap="outerHTML">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Aprovar Remocao</button>
+  </form>
+  <form style="display:inline" hx-post="{% url 'moderation:reject_removal' item.question.id %}" hx-target="#question-{{ item.question.id }}" hx-swap="outerHTML">
+    {% csrf_token %}
+    <button type="submit" class="btn">Rejeitar Remocao</button>
+  </form>
+</div>

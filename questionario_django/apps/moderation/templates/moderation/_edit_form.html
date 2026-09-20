@@ -1,0 +1,23 @@
+<div class="card" id="question-{{ question.id }}">
+  <form hx-post="{% url 'moderation:edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p>
+      <label>{{ form.statement.label }}</label>
+      {{ form.statement }}
+      {{ form.statement.errors }}
+    </p>
+    <p>
+      <label>{{ form.correct_answer.label }}</label>
+      {{ form.correct_answer }}
+      {{ form.correct_answer.errors }}
+    </p>
+    <p>
+      <label>{{ form.category.label }}</label>
+      {{ form.category }}
+      {{ form.category.errors }}
+    </p>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+    <button type="button" class="btn" hx-get="{% url 'moderation:cancel_edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">Cancelar</button>
+  </form>
+</div>

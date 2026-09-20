@@ -1,0 +1,28 @@
+{% extends "core/base.html" %}
+{% block title %}Admin - Configuracoes{% endblock %}
+{% block content %}
+{% include "core/_admin_nav.html" %}
+<h1>Configuracoes</h1>
+<div class="card">
+  {% if error %}<p class="chip chip--false">{{ error }}</p>{% endif %}
+  <form method="post" hx-post="{% url 'moderation:admin_settings' %}" hx-target="body">
+    {% csrf_token %}
+    <p>
+      <label>{{ form.similarity_threshold.label }}</label>
+      {{ form.similarity_threshold }}
+      {{ form.similarity_threshold.errors }}
+    </p>
+    <p>
+      <label>{{ form.quiz_size.label }}</label>
+      {{ form.quiz_size }}
+      {{ form.quiz_size.errors }}
+    </p>
+    <p>
+      <label>{{ form.report_threshold.label }}</label>
+      {{ form.report_threshold }}
+      {{ form.report_threshold.errors }}
+    </p>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+  </form>
+</div>
+{% endblock %}

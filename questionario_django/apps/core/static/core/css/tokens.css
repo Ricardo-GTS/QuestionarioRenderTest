@@ -1,0 +1,14 @@
+/* Design tokens -- porte de frontend/questionario/style.py */
+:root {
+  --color-ink: #16241C;
+  --color-paper: #EFF3EE;
+  --color-accent: #C88A1E;
+  --color-true: #2E7D5B;
+  --color-false: #B23A2E;
+  --color-border: var(--color-ink);
+
+  --font-heading: 'Lora', serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+
+  --radius: 0;
+}

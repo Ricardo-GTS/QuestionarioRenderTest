@@ -1,0 +1,36 @@
+<div id="question-form-wrapper" class="card">
+  {% if success_message %}<p class="chip chip--true">{{ success_message }}</p>{% endif %}
+  {% if error_message %}<p class="chip chip--false">{{ error_message }}</p>{% endif %}
+
+  <form hx-post="{% url 'questions:create' %}" hx-target="#question-form-wrapper" hx-swap="outerHTML">
+    {% csrf_token %}
+    <p>
+      <label for="id_statement">Enunciado</label>
+      {{ form.statement }}
+      {{ form.statement.errors }}
+    </p>
+    <p>
+      <label>Resposta correta</label>
+      {{ form.correct_answer }}
+      {{ form.correct_answer.errors }}
+    </p>
+    <p>
+      <label for="id_category">Categoria (opcional)</label>
+      {{ form.category }}
+      {{ form.category.errors }}
+    </p>
+    <button type="submit" class="btn btn-primary">Criar pergunta</button>
+  </form>
+
+  {% if similar_questions %}
+  <div class="similar-list">
+    <h2>Ja existe uma pergunta parecida</h2>
+    {% for sq in similar_questions %}
+      <div class="card">
+        <p>{{ sq.question.statement }}</p>
+        <span class="chip chip--accent">similaridade {{ sq.similarity|floatformat:2 }}</span>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>

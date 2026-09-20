@@ -1,0 +1,13 @@
+<div id="quiz-card" class="card">
+{% if no_questions %}
+  <p>Nao ha perguntas disponiveis no momento. <a href="{% url 'questions:create' %}">Crie uma pergunta</a> para comecar.</p>
+{% else %}
+  <p>Pergunta {{ index }} de {{ total }}</p>
+  <h2>{{ question.statement }}</h2>
+  <form hx-post="{% url 'quiz:answer' %}" hx-target="#quiz-card" hx-swap="outerHTML">
+    {% csrf_token %}
+    <button type="submit" name="answer" value="true" class="btn-truefalse">Verdadeiro</button>
+    <button type="submit" name="answer" value="false" class="btn-truefalse">Falso</button>
+  </form>
+{% endif %}
+</div>

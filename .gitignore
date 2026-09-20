@@ -26,13 +26,9 @@ htmlcov/
 .coverage
 .coverage.*
 
-# Alembic (nao versionar bancos sqlite locais gerados por engano)
+# Django (questionario_django)
 *.sqlite3
-
-# Reflex (frontend)
-frontend/.web/
-frontend/**/__pycache__/
-.states/
+questionario_django/staticfiles/
 
 # Docker / Postgres / pgvector
 pgdata/
@@ -57,7 +53,3 @@ Thumbs.db
 # Logs
 *.log
 logs/
-
-# Node/bun (caso o build do Reflex gere artefatos locais)
-node_modules/
-bun.lockb

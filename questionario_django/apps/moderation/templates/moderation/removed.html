@@ -1,0 +1,11 @@
+{% extends "core/base.html" %}
+{% block title %}Admin - Perguntas Removidas{% endblock %}
+{% block content %}
+{% include "core/_admin_nav.html" %}
+<h1>Perguntas Removidas</h1>
+{% for question in questions %}
+  {% include "moderation/_question_row.html" %}
+{% empty %}
+  <p>Nenhuma pergunta removida.</p>
+{% endfor %}
+{% endblock %}

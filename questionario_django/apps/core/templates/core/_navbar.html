@@ -1,0 +1,23 @@
+<nav class="navbar">
+  <div>
+    <a href="{% url 'questions:create' %}" style="font-family: var(--font-heading); font-weight: 700;">Questionario</a>
+  </div>
+  <div>
+    {% if user.is_authenticated %}
+      <a href="{% url 'questions:create' %}" class="{% if request.path == '/' %}active{% endif %}">Criar Pergunta</a>
+      <a href="{% url 'quiz:start' %}">Fazer Questionario</a>
+      <a href="{% url 'accounts:stats' %}">Estatisticas</a>
+      <a href="{% url 'accounts:account' %}">Conta</a>
+      {% if is_admin %}
+        <a href="{% url 'moderation:dashboard' %}">Admin</a>
+      {% endif %}
+      <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
+        {% csrf_token %}
+        <button type="submit" class="btn">Sair</button>
+      </form>
+    {% else %}
+      <a href="{% url 'accounts:login' %}">Entrar</a>
+      <a href="{% url 'accounts:register' %}">Cadastrar</a>
+    {% endif %}
+  </div>
+</nav>
