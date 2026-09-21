@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |---|---|
 | Backend + Frontend | Django (monolito), Templates server-side + HTMX para trocas parciais de tela |
 | Banco | PostgreSQL + extensao `pgvector` (indice HNSW, distancia de cosseno), via `pgvector.django` |
-| Embeddings | Ollama local, modelo `nomic-embed-text` |
+| Embeddings | Ollama local, modelo `bge-m3` |
 | Autenticacao | Sessao do Django (cookie `sessionid`, httpOnly). Login com Google e' opcional/aditivo, ver secao "Login com Google" abaixo |
 | Moderacao | Flag automatica apos `REPORT_THRESHOLD` reportes (default 3) — sem remocao automatica |
 | Painel de admin | Quem estiver em `ADMIN_EMAILS` (.env) vira admin no login — sem coluna `role`, sem auto-promocao (nao confundir com superuser do Django, ver secao "Django Admin nativo" abaixo) |
@@ -82,7 +82,9 @@ A tela de moderacao mostra quem criou a pergunta e quem reportou (nome + motivo)
 
 **Ollama sincrono (nao async):** `questions.services.get_embedding` usa `httpx.post` sincrono (nao `httpx.AsyncClient`) porque as views sao Django comuns (sync), nao ha DRF nem necessidade de ASGI so' por causa dessa chamada — o bloqueio do worker durante a chamada e' aceitavel com multiplos workers (`gunicorn -w N`) e volume baixo de criacao de perguntas (projeto academico). `google.auth.transport.requests` (usado por `verify_google_id_token`) exige o pacote `requests` instalado separadamente — nao vem como dependencia transitiva do `google-auth`, mesmo sendo importado por ele.
 
-**`pgvector.django`:** `VectorField(dimensions=768)` + `HnswIndex` em `Meta.indexes` (com `m=16, ef_construction=64, opclasses=["vector_cosine_ops"]`) **e'** reconhecido pelo `makemigrations`, que gera a `AddIndex` sozinho — nao precisa de SQL manual pro indice. A extensao `vector` do Postgres precisa de operacao manual (`pgvector.django.VectorExtension()`, adicionada a mao na migration inicial gerada, ver `apps/questions/migrations/0001_initial.py`). Os enums de status (`QuestionStatus`, `ReportStatus`) sao `models.TextChoices` — viram `varchar`+`choices` no banco (validacao so' em nivel de aplicacao), nao um tipo `ENUM` nativo do Postgres.
+**`pgvector.django`:** `VectorField(dimensions=1024)` + `HnswIndex` em `Meta.indexes` (com `m=16, ef_construction=64, opclasses=["vector_cosine_ops"]`) **e'** reconhecido pelo `makemigrations`, que gera a `AddIndex` sozinho — nao precisa de SQL manual pro indice. A extensao `vector` do Postgres precisa de operacao manual (`pgvector.django.VectorExtension()`, adicionada a mao na migration inicial gerada, ver `apps/questions/migrations/0001_initial.py`). Os enums de status (`QuestionStatus`, `ReportStatus`) sao `models.TextChoices` — viram `varchar`+`choices` no banco (validacao so' em nivel de aplicacao), nao um tipo `ENUM` nativo do Postgres.
+
+**Trocar o modelo de embedding (ja aconteceu uma vez: `nomic-embed-text` 768d → `bge-m3` 1024d, 2026-09-20):** motivo — `nomic-embed-text` dava similaridade alta (~0.82) pra perguntas com o mesmo molde gramatical mas fatos diferentes (ex: "a capital do Brasil e Brasilia" vs "a capital da Franca e Paris"), quase colando no valor de parafrases reais (~0.98) e deixando pouca margem pra calibrar o threshold. Testado empiricamente (nao so' por ranking de leaderboard — `multilingual-e5-large-instruct`, #1 em STS-PT no MTEB, na pratica separou pior que `bge-m3` aqui) com 3 pares de frase (parafrase / mesmo-molde-fatos-diferentes / sem-relacao) em 5 modelos via Ollama `/api/embeddings` direto, comparando o "gap" de cosseno entre parafrase e falso-positivo. `bge-m3` venceu (gap 0.31 vs 0.16 do `nomic-embed-text`). Trocar modelo de embedding exige SEMPRE mudar 4 coisas juntas, nunca so' o nome: `EMBEDDING_DIM` em `apps/questions/models.py`, uma migration de `AlterField` na coluna `embedding` (**em migration SEPARADA de qualquer `RunPython` que apague/limpe dados antes** — Postgres nao permite `DELETE` que dispara trigger de FK e `ALTER TABLE` na mesma transacao, erro real: "cannot ALTER TABLE because it has pending trigger events"), o `OLLAMA_EMBED_MODEL` no `.env`, e o `SIMILARITY_THRESHOLD` (a escala de similaridade muda de modelo pra modelo). `apps/questions/management/commands/recompute_embeddings.py` recalcula o embedding de perguntas existentes com o modelo atual — rodar depois de qualquer troca de modelo se houver dado real a preservar (da vez que isso aconteceu, so' havia 1 pergunta de teste, entao a migration simplesmente apagou as perguntas em vez de recalcular).
 
 **Numeros e locale:** `LANGUAGE_CODE = "pt-br"` faz o filtro de template `floatformat` exibir numeros com virgula decimal (ex: "0,98" na exibicao informativa de similaridade) — mas os campos de formulario (`FloatField`/`IntegerField` em `AppSettingsForm`) continuam esperando ponto, porque tem `localize=False` por padrao no Django. Isso **nao e' um bug** (confirmado testando o POST em `/admin/configuracoes`), so' uma inconsistencia cosmetica entre texto informativo (locale-aware) e campo editavel (sempre ponto).
 
@@ -131,9 +133,9 @@ Plataforma web onde alunos se cadastram, criam perguntas de Verdadeiro ou Falso 
 - Cada reporte individual é aceito ou rejeitado pelo admin (ação separada de aprovar/remover a pergunta). Reportes aceitos contam para a reputação de quem reportou; perguntas removidas contam como penalidade para quem as criou -- ambos visíveis para o usuário numa página "Estatísticas" e para o admin em Usuários (adicionado após o MVP).
 
 **RF05 — Detecção de similaridade semântica (núcleo técnico)**
-- Embedding do enunciado gerado localmente via Ollama (`nomic-embed-text`).
+- Embedding do enunciado gerado localmente via Ollama (`bge-m3`).
 - Embeddings persistidos no Postgres via `pgvector`.
-- Busca de vizinhos mais próximos por similaridade de cosseno, limiar de 75% configurável (env var, nunca hardcoded).
+- Busca de vizinhos mais próximos por similaridade de cosseno, limiar configurável (env var/`AppSettings`, nunca hardcoded — default `0.80`).
 
 ### Requisitos Não Funcionais (RNF)
 

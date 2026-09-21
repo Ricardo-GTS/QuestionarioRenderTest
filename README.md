@@ -6,7 +6,7 @@ Sistema web de apoio a educacao onde alunos criam e respondem perguntas de Verda
 
 - **Backend + Frontend:** Django (monolito) — Templates server-side + HTMX para trocas parciais de tela (sem SPA, sem Django REST Framework)
 - **Banco:** PostgreSQL + extensao `pgvector` (indice HNSW, distancia de cosseno), via `pgvector.django`
-- **Embeddings:** Ollama rodando localmente, modelo `nomic-embed-text`
+- **Embeddings:** Ollama rodando localmente, modelo `bge-m3`
 - **Autenticacao:** sessao do Django (cookie `sessionid`, httpOnly)
 
 ## Rodando com Docker (recomendado)
@@ -16,7 +16,7 @@ cp .env.example .env   # ajuste os valores se necessario
 docker compose up --build
 ```
 
-Isso sobe: Postgres com pgvector, Ollama (baixando o modelo `nomic-embed-text` automaticamente via o servico `ollama-init`) e a aplicacao Django.
+Isso sobe: Postgres com pgvector, Ollama (baixando o modelo `bge-m3` automaticamente via o servico `ollama-init`) e a aplicacao Django.
 
 - App: http://localhost:8000
 - Healthcheck: http://localhost:8000/health
@@ -30,8 +30,8 @@ Ver `.env.example`. Nenhum valor de negocio (limiar de similaridade, tamanho do 
 |---|---|---|
 | `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` | Credenciais do Postgres | `questionario`/`questionario`/`questionario_django` |
 | `OLLAMA_HOST` | URL do servidor Ollama | `http://ollama:11434` |
-| `OLLAMA_EMBED_MODEL` | Modelo de embedding usado | `nomic-embed-text` |
-| `SIMILARITY_THRESHOLD` | Limiar de similaridade de cosseno para descartar pergunta duplicada | `0.75` |
+| `OLLAMA_EMBED_MODEL` | Modelo de embedding usado | `bge-m3` |
+| `SIMILARITY_THRESHOLD` | Limiar de similaridade de cosseno para descartar pergunta duplicada | `0.80` |
 | `QUIZ_SIZE` | Quantidade de perguntas por questionario | `10` |
 | `REPORT_THRESHOLD` | Quantidade de reportes para flagar uma pergunta | `3` |
 | `DJANGO_SECRET_KEY` | Chave secreta do Django (sessao, CSRF) | - |

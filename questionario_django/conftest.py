@@ -16,8 +16,10 @@ def _admin_emails(settings):
 
 
 def _fake_get_embedding(text: str) -> list[float]:
+    from apps.questions.models import EMBEDDING_DIM
+
     seed = float(sum(ord(c) for c in text) % 1000)
-    return [seed] + [0.0] * 767
+    return [seed] + [0.0] * (EMBEDDING_DIM - 1)
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@ from django.conf import settings
 from django.db import models
 from pgvector.django import HnswIndex, VectorField
 
-EMBEDDING_DIM = 768  # nomic-embed-text
+EMBEDDING_DIM = 1024  # bge-m3
 
 
 class QuestionStatus(models.TextChoices):
