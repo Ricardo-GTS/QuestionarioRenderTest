@@ -42,6 +42,11 @@ INSTALLED_APPS = [
     "apps.moderation",
 ]
 
+# Scripts de analise/importacao (pasta local, fora do git -- ver .gitignore):
+# so' registra o app se a pasta existir, pro sistema funcionar igual sem ela.
+if (BASE_DIR / "analise").is_dir():
+    INSTALLED_APPS.append("analise")
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
