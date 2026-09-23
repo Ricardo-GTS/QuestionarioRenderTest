@@ -17,6 +17,11 @@
       {{ form.email.errors }}
     </p>
     <p>
+      <label for="id_registration_number">{{ form.registration_number.label }}</label>
+      {{ form.registration_number }}
+      {{ form.registration_number.errors }}
+    </p>
+    <p>
       <label for="id_password">Nova senha</label>
       {{ form.password }}
       <small>{{ form.password.help_text }}</small>

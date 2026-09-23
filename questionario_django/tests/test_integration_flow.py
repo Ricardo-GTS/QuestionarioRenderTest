@@ -18,7 +18,7 @@ from apps.quiz.models import QuizAttempt
 def test_dedupe_by_semantic_similarity(client, fake_embedding):
     client.post(
         reverse("accounts:register"),
-        {"name": "Autor", "email": "autor@example.com", "password": "senha1234"},
+        {"name": "Autor", "email": "autor@example.com", "password": "senha1234", "registration_number": "20250000001"},
     )
 
     statement = "A capital da Franca e Paris"
@@ -61,7 +61,7 @@ def test_question_create_topic_select_offers_existing_topics_and_reuses_them(cli
 
     client.post(
         reverse("accounts:register"),
-        {"name": "Autor", "email": "autor-topico@example.com", "password": "senha1234"},
+        {"name": "Autor", "email": "autor-topico@example.com", "password": "senha1234", "registration_number": "20250000002"},
     )
 
     resp = client.get(reverse("questions:create"))
@@ -86,7 +86,7 @@ def test_question_create_topic_select_offers_existing_topics_and_reuses_them(cli
 def test_question_create_requires_new_topic_text_when_selected(client, fake_embedding):
     client.post(
         reverse("accounts:register"),
-        {"name": "Autor", "email": "autor-topico-vazio@example.com", "password": "senha1234"},
+        {"name": "Autor", "email": "autor-topico-vazio@example.com", "password": "senha1234", "registration_number": "20250000003"},
     )
     resp = client.post(
         reverse("questions:create"),
@@ -108,7 +108,7 @@ def test_question_create_requires_new_topic_text_when_selected(client, fake_embe
 def test_question_create_stores_citations_and_pertinence(client, fake_embedding):
     client.post(
         reverse("accounts:register"),
-        {"name": "Autor", "email": "autor-citacoes@example.com", "password": "senha1234"},
+        {"name": "Autor", "email": "autor-citacoes@example.com", "password": "senha1234", "registration_number": "20250000004"},
     )
 
     resp = client.post(
@@ -130,7 +130,7 @@ def test_question_create_stores_citations_and_pertinence(client, fake_embedding)
 
 @pytest.mark.django_db
 def test_admin_edit_question_updates_citations_and_pertinence(client, fake_embedding):
-    client.post(reverse("accounts:register"), {"name": "Autor", "email": "autor-edit@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Autor", "email": "autor-edit@example.com", "password": "senha1234", "registration_number": "20250000005"})
     client.post(
         reverse("questions:create"),
         {
@@ -145,7 +145,7 @@ def test_admin_edit_question_updates_citations_and_pertinence(client, fake_embed
     question = Question.objects.get(statement="Pergunta original")
     client.post(reverse("accounts:logout"))
 
-    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234", "registration_number": "20250000006"})
     resp = client.post(
         reverse("moderation:edit_question", args=[question.id]),
         {
@@ -164,7 +164,7 @@ def test_admin_edit_question_updates_citations_and_pertinence(client, fake_embed
 
 @pytest.mark.django_db
 def test_admin_edit_question_topic_select_offers_choices_and_allows_new_topic(client, fake_embedding):
-    client.post(reverse("accounts:register"), {"name": "Autor", "email": "autor-edit-topico@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Autor", "email": "autor-edit-topico@example.com", "password": "senha1234", "registration_number": "20250000007"})
     client.post(
         reverse("questions:create"),
         {
@@ -179,7 +179,7 @@ def test_admin_edit_question_topic_select_offers_choices_and_allows_new_topic(cl
     question = Question.objects.get(statement="Pergunta sobre topico antigo")
     client.post(reverse("accounts:logout"))
 
-    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234", "registration_number": "20250000008"})
 
     form = QuestionEditForm()
     assert ("Topico Antigo", "Topico Antigo") in form.fields["topic"].choices
@@ -222,7 +222,7 @@ def test_admin_edit_question_topic_select_offers_choices_and_allows_new_topic(cl
 @pytest.mark.django_db
 def test_quiz_report_and_moderation_flow(client, fake_embedding):
     # Autor cria uma pergunta
-    client.post(reverse("accounts:register"), {"name": "Autor", "email": "autor2@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Autor", "email": "autor2@example.com", "password": "senha1234", "registration_number": "20250000009"})
     client.post(
         reverse("questions:create"),
         {
@@ -238,7 +238,7 @@ def test_quiz_report_and_moderation_flow(client, fake_embedding):
     client.post(reverse("accounts:logout"))
 
     # Aluno faz o quiz
-    client.post(reverse("accounts:register"), {"name": "Aluno", "email": "aluno@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Aluno", "email": "aluno@example.com", "password": "senha1234", "registration_number": "20250000010"})
     resp = client.get(reverse("quiz:start"))
     assert resp.status_code == 200
     assert resp.context["question"].id == question.id
@@ -267,7 +267,7 @@ def test_quiz_report_and_moderation_flow(client, fake_embedding):
     client.post(reverse("accounts:logout"))
 
     # Admin resolve a fila de moderacao
-    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234", "registration_number": "20250000011"})
     resp = client.get(reverse("moderation:pending_reports"))
     assert resp.status_code == 200
     assert question in [item["question"] for item in resp.context["items"]]
@@ -286,7 +286,7 @@ def test_quiz_report_and_moderation_flow(client, fake_embedding):
 
 @pytest.mark.django_db
 def test_non_admin_cannot_access_moderation_queue(client):
-    client.post(reverse("accounts:register"), {"name": "Aluno", "email": "aluno3@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Aluno", "email": "aluno3@example.com", "password": "senha1234", "registration_number": "20250000012"})
     resp = client.get(reverse("moderation:pending_reports"))
     assert resp.status_code == 403
 
@@ -295,7 +295,9 @@ def test_non_admin_cannot_access_moderation_queue(client):
 def test_admin_settings_update():
     from apps.core.services import get_effective_settings
 
-    User.objects.create_user(email="admin@example.com", name="Admin", password="senha1234")
+    User.objects.create_user(
+        email="admin@example.com", name="Admin", password="senha1234", registration_number="20259999999"
+    )
     from django.test import Client
 
     client = Client()
@@ -330,7 +332,7 @@ def _make_question(author, statement, topic):
 def test_admin_topic_create_rename_delete(client):
     from apps.questions.models import Topic
 
-    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234", "registration_number": "20250000013"})
     admin = User.objects.get(email="admin@example.com")
     _make_question(admin, "Pergunta de fisica", "Fisica")
 
@@ -378,7 +380,7 @@ def test_admin_topic_create_rename_delete(client):
 
 @pytest.mark.django_db
 def test_topic_management_requires_admin(client):
-    client.post(reverse("accounts:register"), {"name": "Aluno", "email": "aluno-topico@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Aluno", "email": "aluno-topico@example.com", "password": "senha1234", "registration_number": "20250000014"})
     resp = client.post(reverse("moderation:topic_create"), {"name": "Hack"})
     assert resp.status_code in (302, 403)
     from apps.questions.models import Topic
@@ -390,7 +392,7 @@ def test_topic_management_requires_admin(client):
 def test_admin_topic_delete_with_questions(client):
     from apps.questions.models import Topic
 
-    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234"})
+    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234", "registration_number": "20250000015"})
     admin = User.objects.get(email="admin@example.com")
     _make_question(admin, "Pergunta de historia 1", "Historia")
     _make_question(admin, "Pergunta de historia 2", "Historia")

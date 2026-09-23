@@ -10,9 +10,16 @@ from django_ratelimit.decorators import ratelimit
 
 from apps.core.permissions import admin_required
 
-from .forms import AccountForm, LoginForm, RegisterForm
+from .forms import AccountForm, LoginForm, RegisterForm, RegistrationNumberForm
 from .models import User
 from .services import verify_google_id_token
+
+
+REGISTRATION_NUMBER_TAKEN = "Ja existe uma conta com essa matricula"
+
+
+def _registration_number_taken(registration_number, exclude_pk=None) -> bool:
+    return User.objects.filter(registration_number=registration_number).exclude(pk=exclude_pk).exists()
 
 
 def register(request):
@@ -20,11 +27,17 @@ def register(request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             email = form.cleaned_data["email"].strip().lower()
+            registration_number = form.cleaned_data["registration_number"]
             if User.objects.filter(email__iexact=email).exists():
                 form.add_error("email", "Ja existe uma conta com esse e-mail")
+            elif _registration_number_taken(registration_number):
+                form.add_error("registration_number", REGISTRATION_NUMBER_TAKEN)
             else:
                 user = User.objects.create_user(
-                    email=email, name=form.cleaned_data["name"], password=form.cleaned_data["password"]
+                    email=email,
+                    name=form.cleaned_data["name"],
+                    password=form.cleaned_data["password"],
+                    registration_number=registration_number,
                 )
                 user.backend = "django.contrib.auth.backends.ModelBackend"
                 login(request, user)
@@ -94,11 +107,15 @@ def account(request):
         form = AccountForm(request.POST)
         if form.is_valid():
             new_email = form.cleaned_data["email"].strip().lower()
+            registration_number = form.cleaned_data["registration_number"]
             if new_email != user.email and User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
                 form.add_error("email", "Ja existe uma conta com esse e-mail")
+            elif _registration_number_taken(registration_number, exclude_pk=user.pk):
+                form.add_error("registration_number", REGISTRATION_NUMBER_TAKEN)
             else:
                 user.name = form.cleaned_data["name"]
                 user.email = new_email
+                user.registration_number = registration_number
                 password = form.cleaned_data.get("password")
                 if password:
                     user.set_password(password)
@@ -108,8 +125,32 @@ def account(request):
                 messages.success(request, "Conta atualizada com sucesso")
                 return redirect("accounts:account")
     else:
-        form = AccountForm(initial={"name": user.name, "email": user.email})
+        form = AccountForm(
+            initial={"name": user.name, "email": user.email, "registration_number": user.registration_number}
+        )
     return render(request, "accounts/account.html", {"form": form})
+
+
+@login_required
+def complete_registration_number(request):
+    """1o acesso de conta sem matricula (login com Google ou conta antiga) -- o
+    RequireRegistrationNumberMiddleware manda pra ca ate a matricula ser preenchida."""
+    user = request.user
+    if user.registration_number:
+        return redirect(settings.LOGIN_REDIRECT_URL)
+    if request.method == "POST":
+        form = RegistrationNumberForm(request.POST)
+        if form.is_valid():
+            registration_number = form.cleaned_data["registration_number"]
+            if _registration_number_taken(registration_number, exclude_pk=user.pk):
+                form.add_error("registration_number", REGISTRATION_NUMBER_TAKEN)
+            else:
+                user.registration_number = registration_number
+                user.save(update_fields=["registration_number"])
+                return redirect(settings.LOGIN_REDIRECT_URL)
+    else:
+        form = RegistrationNumberForm()
+    return render(request, "accounts/complete_registration_number.html", {"form": form})
 
 
 @login_required
@@ -150,6 +191,7 @@ def admin_user_list(request):
                 "id": u.id,
                 "name": u.name,
                 "email": u.email,
+                "registration_number": u.registration_number,
                 "is_admin": u.email.strip().lower() in settings.ADMIN_EMAILS,
                 "question_count": question_counts.get(u.id, 0),
                 **rep,

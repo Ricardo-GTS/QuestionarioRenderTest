@@ -5,7 +5,7 @@
 <h1>Usuarios</h1>
 {% for u in users %}
 <div class="card" id="user-{{ u.id }}">
-  <strong>{{ u.name }}</strong> ({{ u.email }})
+  <strong>{{ u.name }}</strong> ({{ u.email }}) · Matrícula: {{ u.registration_number|default:"não informada" }}
   {% if u.is_admin %}<span class="chip chip--accent">admin</span>{% endif %}
   <p>
     Perguntas criadas: {{ u.question_count }} ·

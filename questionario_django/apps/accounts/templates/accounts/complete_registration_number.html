@@ -1,0 +1,22 @@
+{% extends "core/base.html" %}
+{% block title %}Informe sua matrícula - Questionario{% endblock %}
+{% block content %}
+<h1>Informe sua matrícula</h1>
+<div class="card">
+  <p>Para continuar usando o sistema, informe sua matrícula da universidade.</p>
+  <form method="post" action="{% url 'accounts:complete_registration_number' %}">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p>
+      <label for="id_registration_number">{{ form.registration_number.label }}</label>
+      {{ form.registration_number }}
+      {{ form.registration_number.errors }}
+    </p>
+    <button type="submit" class="btn btn-primary">Salvar</button>
+  </form>
+  <form method="post" action="{% url 'accounts:logout' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn">Sair</button>
+  </form>
+</div>
+{% endblock %}

@@ -10,6 +10,7 @@ urlpatterns = [
     path("sair", views.logout_view, name="logout"),
     path("auth/google", views.google_login, name="google_login"),
     path("conta", views.account, name="account"),
+    path("conta/matricula", views.complete_registration_number, name="complete_registration_number"),
     path("conta/excluir/confirmar", views.delete_account_confirm, name="delete_account_confirm"),
     path("conta/excluir", views.delete_account, name="delete_account"),
     path("estatisticas", views.my_stats, name="stats"),

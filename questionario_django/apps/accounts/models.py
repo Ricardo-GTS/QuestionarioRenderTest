@@ -1,6 +1,12 @@
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
+from django.core.validators import RegexValidator
 from django.db import models
+
+
+REGISTRATION_NUMBER_VALIDATOR = RegexValidator(
+    r"^\d{8,12}$", "A matrícula deve ter apenas números, entre 8 e 12 dígitos."
+)
 
 
 class UserManager(BaseUserManager):
@@ -31,6 +37,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=120)
     email = models.EmailField(unique=True)
     google_sub = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    # null=True so' pra contas antigas e contas criadas via Google: essas sao obrigadas
+    # a preencher no 1o acesso (accounts.middleware.RequireRegistrationNumberMiddleware).
+    registration_number = models.CharField(
+        max_length=12, unique=True, null=True, blank=True, validators=[REGISTRATION_NUMBER_VALIDATOR]
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
