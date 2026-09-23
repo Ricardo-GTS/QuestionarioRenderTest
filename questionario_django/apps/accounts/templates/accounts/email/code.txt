@@ -1,0 +1,7 @@
+Olá!
+
+Seu código de confirmação do Questionario é: {{ code }}
+
+Ele vale por {{ ttl_minutes }} minutos. Se você pedir um novo código, este deixa de valer.
+
+Se você não pediu este código, ignore este e-mail.

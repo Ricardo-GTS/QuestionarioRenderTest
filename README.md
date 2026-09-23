@@ -19,6 +19,7 @@ docker compose up --build
 Isso sobe: Postgres com pgvector, Ollama (baixando o modelo `bge-m3` automaticamente via o servico `ollama-init`) e a aplicacao Django.
 
 - App: http://localhost:8000
+- Mailpit (caixa de entrada falsa com os e-mails de codigo, so' dev): http://localhost:8025
 - Healthcheck: http://localhost:8000/health
 - Django Admin (inspecao ad-hoc, precisa de superuser via `createsuperuser`): http://localhost:8000/django-admin/
 
@@ -39,6 +40,9 @@ Ver `.env.example`. Nenhum valor de negocio (limiar de similaridade, tamanho do 
 | `DJANGO_ALLOWED_HOSTS` | Hosts permitidos, separados por virgula | `localhost,127.0.0.1` |
 | `ADMIN_EMAILS` | E-mails (separados por virgula) com acesso ao painel de admin | vazio |
 | `GOOGLE_CLIENT_ID` | Client ID OAuth do Google, habilita o botao "Entrar com Google" | vazio (feature desligada) |
+| `EMAIL_HOST`/`EMAIL_PORT`/`EMAIL_USE_TLS` | SMTP dos e-mails de codigo. Vazio = e-mail sai no console (so' dev) | `mailpit`/`1025`/`false` no Docker |
+| `EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD` | Credenciais SMTP (Gmail: senha de app) | vazio |
+| `DEFAULT_FROM_EMAIL` | Remetente (no Gmail, tem que ser o mesmo e-mail do `EMAIL_HOST_USER`) | `Questionario <nao-responda@localhost>` |
 
 `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` no `.env` sao so o valor **inicial** (semeado na primeira migration) — depois do primeiro boot, esses 3 ficam editaveis em runtime pelo painel de admin (`/admin/configuracoes`), sem precisar reiniciar o container.
 
@@ -94,9 +98,16 @@ Cada reporte em uma pergunta e contabilizado; ao atingir `REPORT_THRESHOLD` repo
 
 A fila de moderacao (`/admin/moderacao`) lista perguntas com reporte pendente, independente do status delas -- nao so as que ja atingiram `REPORT_THRESHOLD`. O admin resolve com uma decisao so por pergunta: **Aprovar Remocao** (remove a pergunta, aceita os reportes pendentes) ou **Rejeitar Remocao** (mantem/reativa a pergunta, rejeita os reportes pendentes) -- ambas via HTMX, sem reload da pagina. Uma pergunta removida pode ser reativada e editada na aba "Perguntas Removidas". Reportes aceitos contam pra reputacao de quem reportou; perguntas removidas contam como penalidade pra quem criou a pergunta -- os dois numeros ficam visiveis pro proprio usuario na pagina "Estatisticas" e pro admin em Usuarios.
 
+## Confirmacao de e-mail
+
+O cadastro so' cria a conta depois que o aluno digita o codigo de 6 digitos enviado por e-mail (vale 15 min, 5 tentativas, reenvio a cada 60 s e no maximo 5 envios/hora por e-mail). Trocar o e-mail na pagina Conta tambem exige o codigo enviado ao novo e-mail, e o e-mail antigo recebe um aviso.
+
+- **Dev (Docker):** os e-mails caem no Mailpit, em http://localhost:8025 -- nada sai pra internet.
+- **Producao com Gmail:** crie uma conta Gmail so' pro sistema, ative a verificacao em 2 etapas, gere uma senha de app em https://myaccount.google.com/apppasswords e troque no `.env` o bloco de e-mail pelo bloco do Gmail (comentado no `.env.example`). Reinicie o container `django`. Sem `EMAIL_HOST` em producao, o codigo iria pro log -- sempre configure o SMTP.
+
 ## Concorrencia e rate limiting
 
-- **Rate limiting:** login/registro (5/minuto por IP) e criacao de pergunta (20/minuto por IP), via `django-ratelimit`. Excede o limite -> `429 Too Many Requests`.
+- **Rate limiting:** login/registro (5/minuto por IP), confirmacao de codigo (10/minuto) e reenvio de codigo (5/minuto), e criacao de pergunta (20/minuto por IP), via `django-ratelimit`. Excede o limite -> `429 Too Many Requests`.
 - Gargalo esperado sob carga: geracao de embedding no Ollama e' a operacao mais pesada (CPU-bound, sem GPU) — perguntas criadas em rajada ficam mais lentas para salvar, mas nao travam o sistema (multiplos workers gunicorn absorvem o paralelismo).
 
 ## Painel de admin (professor)

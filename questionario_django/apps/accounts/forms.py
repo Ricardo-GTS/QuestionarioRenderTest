@@ -1,5 +1,8 @@
+import re
+
 from django import forms
 
+from . import services
 from .models import REGISTRATION_NUMBER_VALIDATOR
 
 
@@ -38,3 +41,19 @@ class AccountForm(forms.Form):
 
 class RegistrationNumberForm(forms.Form):
     registration_number = registration_number_field()
+
+
+class EmailCodeForm(forms.Form):
+    code = forms.CharField(
+        max_length=20,
+        label="Código de confirmação",
+        widget=forms.TextInput(
+            attrs={"inputmode": "numeric", "autocomplete": "one-time-code", "autofocus": True, "placeholder": "000000"}
+        ),
+    )
+
+    def clean_code(self):
+        code = services.normalize_code(self.cleaned_data["code"])
+        if not re.fullmatch(r"\d{6}", code):
+            raise forms.ValidationError("O código tem 6 números.")
+        return code

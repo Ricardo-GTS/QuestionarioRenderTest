@@ -1,0 +1,62 @@
+{% extends "core/base.html" %}
+{% block title %}Confirme seu e-mail - Questionario{% endblock %}
+{% block content %}
+<h1>{% if mode == "register" %}Confirme seu e-mail{% else %}Confirme o novo e-mail{% endif %}</h1>
+<div class="card">
+  <p>Enviamos um código de 6 números para <strong>{{ email_masked }}</strong>.
+    {% if mode == "register" %}Sua conta só é criada depois da confirmação.{% else %}O e-mail da conta só muda depois da confirmação.{% endif %}
+  </p>
+  <p id="code-expiry" data-expires-in="{{ expires_in }}">
+    {% if expires_in %}O código vale por {{ ttl_minutes }} minutos a partir do envio.{% else %}O código expirou. Peça um novo código.{% endif %}
+  </p>
+
+  <form method="post" action="{% if mode == 'register' %}{% url 'accounts:confirm_registration' %}{% else %}{% url 'accounts:confirm_email_change' %}{% endif %}">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <p>
+      <label for="id_code">{{ form.code.label }}</label>
+      {{ form.code }}
+      {{ form.code.errors }}
+    </p>
+    <button type="submit" class="btn btn-primary">Confirmar</button>
+  </form>
+
+  <form method="post" action="{% if mode == 'register' %}{% url 'accounts:resend_registration_code' %}{% else %}{% url 'accounts:resend_email_change_code' %}{% endif %}">
+    {% csrf_token %}
+    <button type="submit" class="btn" id="resend-button" data-resend-in="{{ resend_in }}"{% if resend_in %} disabled{% endif %}>
+      {% if resend_in %}Reenviar em {{ resend_in }} s{% else %}Reenviar código{% endif %}
+    </button>
+  </form>
+
+  {% if mode == "register" %}
+    <p><a href="{% url 'accounts:register' %}?editar=1">Usar outro e-mail</a></p>
+  {% else %}
+    <form method="post" action="{% url 'accounts:cancel_email_change' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn">Cancelar troca de e-mail</button>
+    </form>
+  {% endif %}
+  <p><small>Não recebeu? Confira a caixa de spam.</small></p>
+</div>
+
+<script>
+  (function () {
+    // So' visual: o servidor aplica validade e espera do reenvio de qualquer jeito.
+    var expiry = document.getElementById("code-expiry");
+    var resend = document.getElementById("resend-button");
+    var expiresAt = Date.now() + parseInt(expiry.dataset.expiresIn, 10) * 1000;
+    var resendAt = Date.now() + parseInt(resend.dataset.resendIn, 10) * 1000;
+    function secondsLeft(moment) { return Math.max(0, Math.ceil((moment - Date.now()) / 1000)); }
+    function format(total) { var s = total % 60; return Math.floor(total / 60) + ":" + (s < 10 ? "0" : "") + s; }
+    function tick() {
+      var e = secondsLeft(expiresAt);
+      var r = secondsLeft(resendAt);
+      expiry.textContent = e > 0 ? "O código expira em " + format(e) + "." : "O código expirou. Peça um novo código.";
+      resend.disabled = r > 0;
+      resend.textContent = r > 0 ? "Reenviar em " + r + " s" : "Reenviar código";
+      if (e > 0 || r > 0) { setTimeout(tick, 1000); }
+    }
+    tick();
+  })();
+</script>
+{% endblock %}

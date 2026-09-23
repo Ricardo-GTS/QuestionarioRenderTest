@@ -2,6 +2,16 @@
 {% block title %}Minha Conta - Questionario{% endblock %}
 {% block content %}
 <h1>Minha Conta</h1>
+{% if pending_change_email %}
+<div class="card">
+  <p>Aguardando confirmação do novo e-mail <strong>{{ pending_change_email }}</strong>. Até lá, o e-mail da conta continua {{ user.email }}.</p>
+  <a href="{% url 'accounts:confirm_email_change' %}" class="btn btn-primary">Digitar código</a>
+  <form method="post" action="{% url 'accounts:cancel_email_change' %}" style="display:inline">
+    {% csrf_token %}
+    <button type="submit" class="btn">Cancelar troca</button>
+  </form>
+</div>
+{% endif %}
 <div class="card">
   <form method="post" action="{% url 'accounts:account' %}">
     {% csrf_token %}

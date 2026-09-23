@@ -1,6 +1,7 @@
 """Smoke test: cada pagina carrega sem erro de template/reverse."""
 
 import pytest
+from conftest import register_user
 from django.urls import reverse
 
 
@@ -12,7 +13,7 @@ def test_anonymous_pages_render(client):
 
 @pytest.mark.django_db
 def test_authenticated_pages_render(client):
-    client.post(reverse("accounts:register"), {"name": "Fulano", "email": "fulano@example.com", "password": "senha1234", "registration_number": "20250000016"})
+    register_user(client, {"name": "Fulano", "email": "fulano@example.com", "password": "senha1234", "registration_number": "20250000016"})
 
     assert client.get(reverse("questions:create")).status_code == 200
     assert client.get(reverse("accounts:account")).status_code == 200
@@ -22,7 +23,7 @@ def test_authenticated_pages_render(client):
 
 @pytest.mark.django_db
 def test_admin_pages_render(client):
-    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234", "registration_number": "20250000017"})
+    register_user(client, {"name": "Admin", "email": "admin@example.com", "password": "senha1234", "registration_number": "20250000017"})
 
     assert client.get(reverse("moderation:dashboard")).status_code == 200
     assert client.get(reverse("moderation:pending_reports")).status_code == 200

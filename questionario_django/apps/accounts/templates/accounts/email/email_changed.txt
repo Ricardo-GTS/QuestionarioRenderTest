@@ -1,0 +1,5 @@
+Olá!
+
+O e-mail da sua conta no Questionario foi alterado para {{ new_email_masked }}.
+
+Se não foi você, fale com o professor (admin) do sistema o quanto antes.

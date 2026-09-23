@@ -5,13 +5,14 @@ import pytest
 from django.urls import reverse
 
 from apps.accounts.models import User
+from conftest import register_user
 
 REGISTER = {"name": "Aluno", "email": "aluno@example.com", "password": "senha1234"}
 
 
 @pytest.mark.django_db
 def test_register_saves_registration_number(client):
-    resp = client.post(reverse("accounts:register"), {**REGISTER, "registration_number": "20230012345"})
+    resp = register_user(client, {**REGISTER, "registration_number": "20230012345"})
     assert resp.status_code == 302
     assert User.objects.get(email="aluno@example.com").registration_number == "20230012345"
 
@@ -27,10 +28,10 @@ def test_register_rejects_invalid_registration_number(client, value):
 
 @pytest.mark.django_db
 def test_register_accepts_8_and_12_digits(client):
-    assert client.post(reverse("accounts:register"), {**REGISTER, "registration_number": "12345678"}).status_code == 302
+    assert register_user(client, {**REGISTER, "registration_number": "12345678"}).status_code == 302
     client.post(reverse("accounts:logout"))
-    resp = client.post(
-        reverse("accounts:register"),
+    resp = register_user(
+        client,
         {**REGISTER, "email": "outro@example.com", "registration_number": "123456789012"},
     )
     assert resp.status_code == 302
@@ -73,7 +74,7 @@ def test_user_without_registration_number_is_sent_to_complete_page(client):
 
 @pytest.mark.django_db
 def test_user_cannot_change_own_registration_number(client):
-    client.post(reverse("accounts:register"), {**REGISTER, "registration_number": "20230012345"})
+    register_user(client, {**REGISTER, "registration_number": "20230012345"})
     resp = client.post(
         reverse("accounts:account"),
         {"name": "Novo Nome", "email": "aluno@example.com", "registration_number": "20239999999", "password": ""},
@@ -100,8 +101,8 @@ def test_admin_changes_registration_number(client):
         email="aluno@example.com", name="Aluno", password="senha1234", registration_number="20230012345"
     )
     User.objects.create_user(email="outro@example.com", name="Outro", password="senha1234", registration_number="11112222")
-    client.post(
-        reverse("accounts:register"),
+    register_user(
+        client,
         {"name": "Admin", "email": "admin@example.com", "password": "senha1234", "registration_number": "99998888"},
     )
     url = reverse("accounts:admin_update_registration_number", args=[aluno.id])

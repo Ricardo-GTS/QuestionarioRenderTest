@@ -41,6 +41,14 @@ services:
     command: ["ollama pull ${OLLAMA_EMBED_MODEL}"]
     restart: "no"
 
+  # Caixa de entrada falsa pra dev: interface em http://localhost:8025, SMTP interno
+  # em mailpit:1025 (EMAIL_HOST=mailpit no .env). Em producao, usar o SMTP real (Gmail).
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+
   django:
     build: ./questionario_django
     restart: unless-stopped

@@ -6,10 +6,15 @@ app_name = "accounts"
 
 urlpatterns = [
     path("registrar", views.register, name="register"),
+    path("registrar/confirmar", views.confirm_registration, name="confirm_registration"),
+    path("registrar/confirmar/reenviar", views.resend_registration_code, name="resend_registration_code"),
     path("entrar", views.login_view, name="login"),
     path("sair", views.logout_view, name="logout"),
     path("auth/google", views.google_login, name="google_login"),
     path("conta", views.account, name="account"),
+    path("conta/confirmar-email", views.confirm_email_change, name="confirm_email_change"),
+    path("conta/confirmar-email/reenviar", views.resend_email_change_code, name="resend_email_change_code"),
+    path("conta/confirmar-email/cancelar", views.cancel_email_change, name="cancel_email_change"),
     path("conta/matricula", views.complete_registration_number, name="complete_registration_number"),
     path("estatisticas", views.my_stats, name="stats"),
     path("admin/usuarios", views.admin_user_list, name="admin_user_list"),

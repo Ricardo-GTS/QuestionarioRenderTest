@@ -53,3 +53,57 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+
+class EmailCodeBase(models.Model):
+    """Codigo de confirmacao enviado por e-mail (so' o hash e' guardado). Regras de
+    validade/tentativas em accounts.services (issue_code/check); cooldown e limite de
+    envio sao por e-mail de destino, via EmailSendLog."""
+
+    code_hash = models.CharField(max_length=64, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    code_expires_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+
+
+class PendingRegistration(EmailCodeBase):
+    """Cadastro aguardando o codigo: o User so' e' criado quando o codigo e' confirmado.
+    Amarrado a sessao do navegador que o criou (request.session), NAO ao e-mail -- de
+    proposito: se fosse um por e-mail, outra pessoa poderia se cadastrar com o mesmo
+    e-mail e sobrescrever a senha do pendente da vitima antes dela digitar o codigo.
+    Nao reserva e-mail nem matricula (unicidade e' checada de novo ao confirmar)."""
+
+    email = models.EmailField(db_index=True)
+    name = models.CharField(max_length=120)
+    registration_number = models.CharField(max_length=12)
+    password_hash = models.CharField(max_length=128)
+
+    def __str__(self):
+        return self.email
+
+
+class EmailChangeRequest(EmailCodeBase):
+    """Troca de e-mail aguardando o codigo enviado ao novo e-mail -- user.email so'
+    muda quando o codigo e' confirmado."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="email_change_request")
+    new_email = models.EmailField()
+
+    def __str__(self):
+        return f"{self.user.email} -> {self.new_email}"
+
+
+class EmailSendLog(models.Model):
+    """Um registro por codigo enviado -- base do cooldown e do limite por hora POR
+    E-MAIL de destino (vale entre sessoes/usuarios, protege a caixa de terceiros e a
+    cota do SMTP)."""
+
+    email = models.EmailField()
+    sent_at = models.DateTimeField()
+
+    class Meta:
+        indexes = [models.Index(fields=["email", "sent_at"], name="ix_email_send_log_email_sent")]

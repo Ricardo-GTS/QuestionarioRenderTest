@@ -33,3 +33,20 @@ def fake_embedding(monkeypatch):
 @pytest.fixture
 def client():
     return Client()
+
+
+def register_user(client, data):
+    """Cadastro completo pelo fluxo real: POST do cadastro, le o codigo do e-mail
+    (pytest-django usa o backend locmem -> django.core.mail.outbox) e confirma.
+    Se o cadastro for recusado (form invalido), devolve essa resposta sem confirmar."""
+    import re
+
+    from django.core import mail
+    from django.urls import reverse
+
+    resp = client.post(reverse("accounts:register"), data)
+    if resp.status_code != 302 or resp.url != reverse("accounts:confirm_registration"):
+        return resp
+    message = next(m for m in reversed(mail.outbox) if data["email"] in m.to)
+    code = re.search(r"\b(\d{6})\b", message.body).group(1)
+    return client.post(reverse("accounts:confirm_registration"), {"code": code})

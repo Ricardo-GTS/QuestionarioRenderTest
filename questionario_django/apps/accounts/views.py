@@ -10,8 +10,9 @@ from django_ratelimit.decorators import ratelimit
 
 from apps.core.permissions import admin_required
 
-from .forms import AccountForm, LoginForm, RegisterForm, RegistrationNumberForm
-from .models import User
+from . import services
+from .forms import AccountForm, EmailCodeForm, LoginForm, RegisterForm, RegistrationNumberForm
+from .models import EmailChangeRequest, PendingRegistration, User
 from .services import verify_google_id_token
 
 
@@ -22,29 +23,115 @@ def _registration_number_taken(registration_number, exclude_pk=None) -> bool:
     return User.objects.filter(registration_number=registration_number).exclude(pk=exclude_pk).exists()
 
 
+EMAIL_TAKEN = "Ja existe uma conta com esse e-mail"
+PENDING_SESSION_KEY = "pending_registration_id"
+
+CODE_ERRORS = {
+    "expired": "Código expirado. Peça um novo código.",
+    "exhausted": "Muitas tentativas erradas. Peça um novo código.",
+}
+
+
+def _code_error(result) -> str:
+    if result.status == "invalid":
+        return f"Código incorreto. Restam {result.attempts_left} tentativa(s)."
+    return CODE_ERRORS[result.status]
+
+
+def _render_confirm_code(request, *, form, target, obj, mode):
+    return render(
+        request,
+        "accounts/confirm_code.html",
+        {
+            "form": form,
+            "email_masked": services.mask_email(target),
+            "mode": mode,
+            "ttl_minutes": services.CODE_TTL_MINUTES,
+            **services.code_timers(obj, target),
+        },
+    )
+
+
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
 def register(request):
+    """O User so' e' criado em confirm_registration, depois do codigo enviado por e-mail."""
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
             email = form.cleaned_data["email"].strip().lower()
             registration_number = form.cleaned_data["registration_number"]
             if User.objects.filter(email__iexact=email).exists():
-                form.add_error("email", "Ja existe uma conta com esse e-mail")
+                form.add_error("email", EMAIL_TAKEN)
             elif _registration_number_taken(registration_number):
                 form.add_error("registration_number", REGISTRATION_NUMBER_TAKEN)
             else:
-                user = User.objects.create_user(
-                    email=email,
+                pending, error = services.start_registration(
+                    session_pending_id=request.session.get(PENDING_SESSION_KEY),
                     name=form.cleaned_data["name"],
-                    password=form.cleaned_data["password"],
+                    email=email,
                     registration_number=registration_number,
+                    password=form.cleaned_data["password"],
                 )
-                user.backend = "django.contrib.auth.backends.ModelBackend"
-                login(request, user)
-                return redirect(settings.LOGIN_REDIRECT_URL)
+                request.session[PENDING_SESSION_KEY] = pending.pk
+                if error:
+                    messages.error(request, error)
+                return redirect("accounts:confirm_registration")
     else:
-        form = RegisterForm()
+        initial = {}
+        pending = _session_pending(request)
+        if pending is not None and request.GET.get("editar"):
+            initial = {"name": pending.name, "email": pending.email, "registration_number": pending.registration_number}
+        form = RegisterForm(initial=initial)
     return render(request, "accounts/register.html", {"form": form, "google_client_id": settings.GOOGLE_CLIENT_ID})
+
+
+def _session_pending(request):
+    pending_id = request.session.get(PENDING_SESSION_KEY)
+    if pending_id is None:
+        return None
+    return PendingRegistration.objects.filter(pk=pending_id).first()
+
+
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+def confirm_registration(request):
+    pending = _session_pending(request)
+    if pending is None:
+        return redirect("accounts:register")
+    form = EmailCodeForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        result = services.complete_registration(pending.pk, form.cleaned_data["code"])
+        if result.status == "ok":
+            del request.session[PENDING_SESSION_KEY]
+            result.user.backend = "django.contrib.auth.backends.ModelBackend"
+            login(request, result.user)
+            messages.success(request, "E-mail confirmado. Sua conta foi criada!")
+            return redirect(settings.LOGIN_REDIRECT_URL)
+        if result.status in ("missing", "email_taken", "registration_number_taken"):
+            request.session.pop(PENDING_SESSION_KEY, None)
+            if result.status != "missing":
+                messages.error(
+                    request,
+                    f"{EMAIL_TAKEN if result.status == 'email_taken' else REGISTRATION_NUMBER_TAKEN}. "
+                    "Faça o cadastro novamente.",
+                )
+            return redirect("accounts:register")
+        form.add_error("code", _code_error(result))
+        pending.refresh_from_db()
+    return _render_confirm_code(request, form=form, target=pending.email, obj=pending, mode="register")
+
+
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@require_POST
+def resend_registration_code(request):
+    pending = _session_pending(request)
+    if pending is None:
+        return redirect("accounts:register")
+    error = services.resend_registration_code(pending)
+    if error:
+        messages.error(request, error)
+    else:
+        messages.success(request, "Enviamos um novo código.")
+    return redirect("accounts:confirm_registration")
 
 
 @ratelimit(key="ip", rate="5/m", method="POST", block=True)
@@ -107,22 +194,80 @@ def account(request):
         form = AccountForm(request.POST)
         if form.is_valid():
             new_email = form.cleaned_data["email"].strip().lower()
-            if new_email != user.email and User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
-                form.add_error("email", "Ja existe uma conta com esse e-mail")
+            email_changed = new_email != user.email
+            if email_changed and User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
+                form.add_error("email", EMAIL_TAKEN)
             else:
                 user.name = form.cleaned_data["name"]
-                user.email = new_email
                 password = form.cleaned_data.get("password")
                 if password:
                     user.set_password(password)
                 user.save()
                 if password:
                     update_session_auth_hash(request, user)
-                messages.success(request, "Conta atualizada com sucesso")
-                return redirect("accounts:account")
+                if not email_changed:
+                    messages.success(request, "Conta atualizada com sucesso")
+                    return redirect("accounts:account")
+                # user.email so' muda depois do codigo enviado ao novo e-mail.
+                _, error = services.start_email_change(user, new_email)
+                if error:
+                    messages.error(request, error)
+                return redirect("accounts:confirm_email_change")
     else:
         form = AccountForm(initial={"name": user.name, "email": user.email})
-    return render(request, "accounts/account.html", {"form": form})
+    pending_change = EmailChangeRequest.objects.filter(user=user).first()
+    return render(
+        request,
+        "accounts/account.html",
+        {
+            "form": form,
+            "pending_change_email": services.mask_email(pending_change.new_email) if pending_change else None,
+        },
+    )
+
+
+@login_required
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+def confirm_email_change(request):
+    req = EmailChangeRequest.objects.filter(user=request.user).first()
+    if req is None:
+        return redirect("accounts:account")
+    form = EmailCodeForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        result = services.complete_email_change(request.user, form.cleaned_data["code"])
+        if result.status == "ok":
+            messages.success(request, f"E-mail alterado para {result.user.email}.")
+            return redirect("accounts:account")
+        if result.status in ("missing", "email_taken"):
+            if result.status == "email_taken":
+                messages.error(request, f"{EMAIL_TAKEN}. A troca foi cancelada.")
+            return redirect("accounts:account")
+        form.add_error("code", _code_error(result))
+        req.refresh_from_db()
+    return _render_confirm_code(request, form=form, target=req.new_email, obj=req, mode="email_change")
+
+
+@login_required
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@require_POST
+def resend_email_change_code(request):
+    req = EmailChangeRequest.objects.filter(user=request.user).first()
+    if req is None:
+        return redirect("accounts:account")
+    error = services.resend_email_change_code(req)
+    if error:
+        messages.error(request, error)
+    else:
+        messages.success(request, "Enviamos um novo código.")
+    return redirect("accounts:confirm_email_change")
+
+
+@login_required
+@require_POST
+def cancel_email_change(request):
+    EmailChangeRequest.objects.filter(user=request.user).delete()
+    messages.success(request, "Troca de e-mail cancelada.")
+    return redirect("accounts:account")
 
 
 @login_required
