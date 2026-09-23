@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 from django_ratelimit.decorators import ratelimit
 
+from apps.core import ratelimits as rl
 from apps.core.permissions import admin_required
 
 from . import services
@@ -106,7 +107,8 @@ def _render_confirm_code(request, *, form, target, mode, timers, destination_tex
     )
 
 
-@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
+@ratelimit(key=rl.post_email, rate=rl.PER_TARGET, method="POST", block=True, group="register-email")
 def register(request):
     """O User so' e' criado em confirm_registration, depois do codigo enviado por e-mail."""
     if request.method == "POST":
@@ -146,7 +148,7 @@ def _session_pending(request):
     return PendingRegistration.objects.filter(pk=pending_id).first()
 
 
-@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
 def confirm_registration(request):
     pending = _session_pending(request)
     if pending is None:
@@ -176,7 +178,7 @@ def confirm_registration(request):
     )
 
 
-@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
 @require_POST
 def resend_registration_code(request):
     pending = _session_pending(request)
@@ -190,7 +192,8 @@ def resend_registration_code(request):
     return redirect("accounts:confirm_registration")
 
 
-@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
+@ratelimit(key=rl.post_email, rate=rl.PER_TARGET, method="POST", block=True, group="login-email")
 def login_view(request):
     if request.method == "POST":
         form = LoginForm(request.POST)
@@ -215,7 +218,7 @@ def logout_view(request):
     return redirect(settings.LOGOUT_REDIRECT_URL)
 
 
-@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
 @require_POST
 def google_login(request):
     credential = request.POST.get("credential", "")
@@ -297,7 +300,8 @@ def account(request):
 
 
 @login_required
-@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
+@ratelimit(key="user", rate=rl.PER_TARGET, method="POST", block=True, group="reauth-send")
 @require_POST
 def reauth_start(request):
     error = services.start_reauth(request.user)
@@ -307,7 +311,8 @@ def reauth_start(request):
 
 
 @login_required
-@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
+@ratelimit(key="user", rate=rl.CODE_CONFIRM_PER_USER, method="POST", block=True, group="reauth-confirm")
 def confirm_reauth(request):
     if not ReauthRequest.objects.filter(user=request.user).exists():
         return redirect("accounts:account")
@@ -333,7 +338,8 @@ def confirm_reauth(request):
 
 
 @login_required
-@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
+@ratelimit(key="user", rate=rl.PER_TARGET, method="POST", block=True, group="reauth-send")
 @require_POST
 def resend_reauth_code(request):
     error = services.start_reauth(request.user)
@@ -345,7 +351,8 @@ def resend_reauth_code(request):
 
 
 @login_required
-@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
+@ratelimit(key="user", rate=rl.CODE_CONFIRM_PER_USER, method="POST", block=True, group="email-change-confirm")
 def confirm_email_change(request):
     req = EmailChangeRequest.objects.filter(user=request.user).first()
     if req is None:
@@ -368,7 +375,8 @@ def confirm_email_change(request):
 
 
 @login_required
-@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
+@ratelimit(key="user", rate=rl.PER_TARGET, method="POST", block=True, group="email-change-send")
 @require_POST
 def resend_email_change_code(request):
     req = EmailChangeRequest.objects.filter(user=request.user).first()
@@ -402,7 +410,8 @@ def _session_reset_identifier(request):
     return tuple(identifier) if identifier else None
 
 
-@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
+@ratelimit(key=rl.post_identifier, rate=rl.PER_TARGET, method="POST", block=True, group="reset-identifier")
 def password_reset_request(request):
     form = ForgotPasswordForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -413,7 +422,7 @@ def password_reset_request(request):
     return render(request, "accounts/password_reset_request.html", {"form": form})
 
 
-@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
 def password_reset_confirm(request):
     """Mesma tela e mesmas mensagens com ou sem conta (nao revela quais existem)."""
     identifier = _session_reset_identifier(request)
@@ -445,7 +454,7 @@ def password_reset_confirm(request):
     )
 
 
-@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.IP_CEILING, method="POST", block=True, group="auth-ip")
 @require_POST
 def password_reset_resend(request):
     identifier = _session_reset_identifier(request)

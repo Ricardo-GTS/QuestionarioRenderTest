@@ -2,13 +2,16 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django_ratelimit.decorators import ratelimit
 
+from apps.core import ratelimits as rl
+
 from . import services
 from .forms import NEW_TOPIC_CHOICE, QuestionForm
 from .models import Question
 
 
 @login_required
-@ratelimit(key="ip", rate="20/m", method="POST", block=True)
+@ratelimit(key="ip", rate=rl.QUESTION_IP_CEILING, method="POST", block=True, group="question-ip")
+@ratelimit(key="user_or_ip", rate=rl.QUESTION_PER_USER, method="POST", block=True, group="question-user")
 def create_question(request):
     similar_questions = []
     success_message = None

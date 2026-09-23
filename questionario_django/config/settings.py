@@ -57,6 +57,9 @@ MIDDLEWARE = [
     "apps.accounts.middleware.RequireRegistrationNumberMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Converte o bloqueio do @ratelimit em RATELIMIT_VIEW (429 "muitas requisicoes");
+    # sem ele, o Ratelimited vira um 403 generico.
+    "django_ratelimit.middleware.RatelimitMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -170,12 +173,25 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Questionario <nao-responda@localhost>")
+# Envia os e-mails numa thread em background (a tela nao espera o SMTP, ~2 s no Gmail).
+# Os testes desligam (conftest) pra ler mail.outbox na hora.
+EMAIL_SEND_ASYNC = env_bool("EMAIL_SEND_ASYNC", True)
 
 # --- Cache (usado pelo django-ratelimit) ---
+# DatabaseCache (e nao LocMemCache): com varios workers gunicorn, cada processo teria o
+# proprio LocMem e o limite "5/min" viraria 5 por worker. O banco e' compartilhado.
+# Incremento nao e' atomico (pode passar 1 tentativa a mais em requests simultaneos) --
+# aceitavel aqui; Redis seria o ideal se o volume crescer.
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
     }
 }
 
 RATELIMIT_VIEW = "apps.core.views.rate_limited"
+RATELIMIT_IP_META_KEY = "apps.core.ratelimits.client_ip"
+# Quantos proxies confiaveis ficam na frente do Django (nginx, Cloudflare...). 0 = acesso
+# direto (usa REMOTE_ADDR). So' aumentar se houver MESMO um proxy -- senao o cliente
+# consegue forjar o X-Forwarded-For e fugir do rate limit.
+TRUSTED_PROXY_COUNT = int(os.environ.get("TRUSTED_PROXY_COUNT", "0"))

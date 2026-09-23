@@ -42,6 +42,9 @@ Ver `.env.example`. Nenhum valor de negocio (limiar de similaridade, tamanho do 
 | `GOOGLE_CLIENT_ID` | Client ID OAuth do Google, habilita o botao "Entrar com Google" | vazio (feature desligada) |
 | `EMAIL_HOST`/`EMAIL_PORT`/`EMAIL_USE_TLS` | SMTP dos e-mails de codigo. Vazio = e-mail sai no console (so' dev) | `mailpit`/`1025`/`false` no Docker |
 | `EMAIL_HOST_USER`/`EMAIL_HOST_PASSWORD` | Credenciais SMTP (Gmail: senha de app) | vazio |
+| `GUNICORN_WORKERS` | Processos gunicorn atendendo requests em paralelo | `4` |
+| `TRUSTED_PROXY_COUNT` | Numero de proxies confiaveis na frente do Django (IP real pelo `X-Forwarded-For`) | `0` |
+| `EMAIL_SEND_ASYNC` | Envia os e-mails em background (a tela nao espera o SMTP) | `true` |
 | `DEFAULT_FROM_EMAIL` | Remetente (no Gmail, tem que ser o mesmo e-mail do `EMAIL_HOST_USER`) | `Questionario <nao-responda@localhost>` |
 
 `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` no `.env` sao so o valor **inicial** (semeado na primeira migration) — depois do primeiro boot, esses 3 ficam editaveis em runtime pelo painel de admin (`/admin/configuracoes`), sem precisar reiniciar o container.
@@ -115,7 +118,8 @@ O nome pode ser alterado direto. Para alterar o e-mail ou a senha, o aluno clica
 
 ## Concorrencia e rate limiting
 
-- **Rate limiting:** login/registro (5/minuto por IP), confirmacao de codigo (10/minuto) e reenvio de codigo (5/minuto), e criacao de pergunta (20/minuto por IP), via `django-ratelimit`. Excede o limite -> `429 Too Many Requests`.
+- **Rate limiting** (`django-ratelimit`, regras em `apps/core/ratelimits.py`): por **alvo**, nao por IP -- login e cadastro 5/minuto por e-mail, recuperacao de senha 5/minuto por e-mail/matricula, codigos na Conta por usuario, criacao de pergunta 20/minuto por usuario. Por IP so' um teto alto (300/minuto nas telas de conta, 1000/minuto na criacao de pergunta), pra turma inteira atras do mesmo IP da universidade nao ser bloqueada. Excede o limite -> `429 Too Many Requests`. Com proxy (nginx, Cloudflare) na frente, defina `TRUSTED_PROXY_COUNT` no `.env` com o numero de proxies.
+- **Desempenho:** gunicorn com 4 workers (`GUNICORN_WORKERS`), modelo de embedding sempre carregado no Ollama (`OLLAMA_KEEP_ALIVE=-1`, ~1,2 GB de RAM) e aquecido na subida, e e-mails enviados em background.
 - Gargalo esperado sob carga: geracao de embedding no Ollama e' a operacao mais pesada (CPU-bound, sem GPU) — perguntas criadas em rajada ficam mais lentas para salvar, mas nao travam o sistema (multiplos workers gunicorn absorvem o paralelismo).
 
 ## Painel de admin (professor)

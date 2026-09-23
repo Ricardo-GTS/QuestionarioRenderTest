@@ -13,12 +13,13 @@ import logging
 import math
 import re
 import secrets
+import threading
 from dataclasses import dataclass
 from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import connections, transaction
 from django.template.loader import render_to_string
 from django.utils import timezone
 from google.auth.transport import requests as google_requests
@@ -164,10 +165,15 @@ def _send_new_code(obj, email: str, now=None, purpose: str = "confirm") -> str |
         code = issue_code(obj, email, now)
     except CodeNotSent as exc:
         return str(exc)
-    if not send_code_email(email, code, purpose):
-        # Nada saiu -- sem EmailSendLog, o reenvio fica liberado na hora.
+    # O log e' gravado antes (o envio pode ser em background) e apagado se o envio
+    # falhar -- sem log, o cooldown nao prende o reenvio por um e-mail que nao saiu.
+    log = EmailSendLog.objects.create(email=email, sent_at=now)
+    sent = dispatch_email(
+        lambda: send_code_email(email, code, purpose),
+        on_failure=lambda: EmailSendLog.objects.filter(pk=log.pk).delete(),
+    )
+    if sent is False:
         return SEND_FAILED
-    EmailSendLog.objects.create(email=email, sent_at=now)
     return None
 
 
@@ -182,6 +188,30 @@ def code_timers(obj, email: str, now=None) -> dict:
 
 
 # --- E-mails ---
+
+
+def dispatch_email(send, *, on_failure=None):
+    """Roda send() (que devolve True/False) agora ou numa thread em background
+    (settings.EMAIL_SEND_ASYNC) -- a tela nao espera os ~2 s do SMTP. Sincrono devolve
+    o resultado; em background devolve None (o resultado so' sai no log/on_failure)."""
+    if not settings.EMAIL_SEND_ASYNC:
+        ok = send()
+        if not ok and on_failure:
+            on_failure()
+        return ok
+
+    def run():
+        try:
+            if not send() and on_failure:
+                on_failure()
+        except Exception:
+            logger.exception("Falha no envio de e-mail em background")
+        finally:
+            connections.close_all()  # thread fora do ciclo de request: fecha a conexao do banco
+
+    # So' depois do commit: a thread nao pode ver (nem apagar) dado que ainda nao existe.
+    transaction.on_commit(lambda: threading.Thread(target=run, daemon=True).start())
+    return None
 
 
 CODE_EMAILS = {
@@ -212,29 +242,33 @@ def send_code_email(email: str, code: str, purpose: str = "confirm") -> bool:
     return True
 
 
-def send_email_changed_notice(old_email: str, new_email: str) -> None:
-    context = {"new_email_masked": mask_email(new_email)}
+def _send_notice(email: str, subject: str, template: str, context: dict) -> bool:
     try:
         send_mail(
-            subject="O e-mail da sua conta foi alterado – Questionario",
-            message=render_to_string("accounts/email/email_changed.txt", context),
-            from_email=None,
-            recipient_list=[old_email],
-        )
-    except Exception:
-        logger.exception("Falha ao avisar troca de e-mail para %s", mask_email(old_email))
-
-
-def send_password_changed_notice(email: str) -> None:
-    try:
-        send_mail(
-            subject="Sua senha foi alterada – Questionario",
-            message=render_to_string("accounts/email/password_changed.txt", {}),
+            subject=subject,
+            message=render_to_string(template, context),
             from_email=None,
             recipient_list=[email],
         )
     except Exception:
-        logger.exception("Falha ao avisar troca de senha para %s", mask_email(email))
+        logger.exception("Falha ao enviar aviso '%s' para %s", subject, mask_email(email))
+        return False
+    return True
+
+
+def send_email_changed_notice(old_email: str, new_email: str) -> None:
+    context = {"new_email_masked": mask_email(new_email)}
+    dispatch_email(
+        lambda: _send_notice(
+            old_email, "O e-mail da sua conta foi alterado – Questionario", "accounts/email/email_changed.txt", context
+        )
+    )
+
+
+def send_password_changed_notice(email: str) -> None:
+    dispatch_email(
+        lambda: _send_notice(email, "Sua senha foi alterada – Questionario", "accounts/email/password_changed.txt", {})
+    )
 
 
 # --- Cadastro pendente ---

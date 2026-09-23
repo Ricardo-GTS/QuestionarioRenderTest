@@ -13,6 +13,8 @@ from django.test import Client
 def _admin_emails(settings):
     settings.ADMIN_EMAILS = {"admin@example.com"}
     settings.RATELIMIT_ENABLE = False
+    # E-mail sincrono nos testes (o background/thread tem teste proprio).
+    settings.EMAIL_SEND_ASYNC = False
 
 
 def _fake_get_embedding(text: str) -> list[float]:
