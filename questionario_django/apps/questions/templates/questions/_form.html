@@ -15,9 +15,25 @@
       {{ form.correct_answer.errors }}
     </p>
     <p>
-      <label for="id_category">Categoria (opcional)</label>
-      {{ form.category }}
-      {{ form.category.errors }}
+      <label for="id_topic">{{ form.topic.label }}</label>
+      {{ form.topic }}
+      {{ form.topic.errors }}
+    </p>
+    <p id="new-topic-wrapper" data-new-topic-value="{{ new_topic_choice }}">
+      <label for="id_new_topic">{{ form.new_topic.label }}</label>
+      {{ form.new_topic }}
+      <small>{{ form.new_topic.help_text }}</small>
+      {{ form.new_topic.errors }}
+    </p>
+    <p>
+      <label for="id_citations_references">{{ form.citations_references.label }}</label>
+      {{ form.citations_references }}
+      {{ form.citations_references.errors }}
+    </p>
+    <p>
+      <label for="id_pertinence">{{ form.pertinence.label }}</label>
+      {{ form.pertinence }}
+      {{ form.pertinence.errors }}
     </p>
     <button type="submit" class="btn btn-primary">Criar pergunta</button>
   </form>
@@ -33,4 +49,16 @@
     {% endfor %}
   </div>
   {% endif %}
+
+  <script>
+    (function () {
+      var topicSelect = document.getElementById("id_topic");
+      var newTopicWrapper = document.getElementById("new-topic-wrapper");
+      function toggleNewTopic() {
+        newTopicWrapper.style.display = topicSelect.value === newTopicWrapper.dataset.newTopicValue ? "" : "none";
+      }
+      topicSelect.addEventListener("change", toggleNewTopic);
+      toggleNewTopic();
+    })();
+  </script>
 </div>

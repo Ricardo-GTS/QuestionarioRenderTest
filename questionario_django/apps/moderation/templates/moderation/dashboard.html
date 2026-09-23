@@ -16,9 +16,9 @@
 </div>
 
 <div class="card">
-  <h2>Perguntas por categoria</h2>
-  {% for row in stats.questions_by_category %}
-    <p>{{ row.category }}: {{ row.count }}</p>
+  <h2>Perguntas por tópico</h2>
+  {% for row in stats.questions_by_topic %}
+    <p>{{ row.topic }}: {{ row.count }}</p>
   {% empty %}
     <p>Nenhuma pergunta cadastrada.</p>
   {% endfor %}

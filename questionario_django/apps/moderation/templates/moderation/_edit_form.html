@@ -13,11 +13,40 @@
       {{ form.correct_answer.errors }}
     </p>
     <p>
-      <label>{{ form.category.label }}</label>
-      {{ form.category }}
-      {{ form.category.errors }}
+      <label>{{ form.topic.label }}</label>
+      {{ form.topic }}
+      {{ form.topic.errors }}
+    </p>
+    <p id="new-topic-wrapper-{{ question.id }}" data-new-topic-value="{{ new_topic_choice }}">
+      <label>{{ form.new_topic.label }}</label>
+      {{ form.new_topic }}
+      <small>{{ form.new_topic.help_text }}</small>
+      {{ form.new_topic.errors }}
+    </p>
+    <p>
+      <label>{{ form.citations_references.label }}</label>
+      {{ form.citations_references }}
+      {{ form.citations_references.errors }}
+    </p>
+    <p>
+      <label>{{ form.pertinence.label }}</label>
+      {{ form.pertinence }}
+      {{ form.pertinence.errors }}
     </p>
     <button type="submit" class="btn btn-primary">Salvar</button>
     <button type="button" class="btn" hx-get="{% url 'moderation:cancel_edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">Cancelar</button>
   </form>
+
+  <script>
+    (function () {
+      var card = document.getElementById("question-{{ question.id }}");
+      var topicSelect = card.querySelector('select[name="topic"]');
+      var newTopicWrapper = document.getElementById("new-topic-wrapper-{{ question.id }}");
+      function toggleNewTopic() {
+        newTopicWrapper.style.display = topicSelect.value === newTopicWrapper.dataset.newTopicValue ? "" : "none";
+      }
+      topicSelect.addEventListener("change", toggleNewTopic);
+      toggleNewTopic();
+    })();
+  </script>
 </div>

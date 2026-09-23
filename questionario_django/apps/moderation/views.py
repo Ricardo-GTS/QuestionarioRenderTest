@@ -4,6 +4,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.permissions import admin_required
 from apps.core.services import get_effective_settings, update_settings
+from apps.questions.forms import NEW_TOPIC_CHOICE
 from apps.questions.models import Question, QuestionStatus
 from apps.questions.services import EmbeddingServiceError
 
@@ -104,7 +105,9 @@ def edit_question(request, question_id):
                     question,
                     statement=form.cleaned_data["statement"],
                     correct_answer=form.cleaned_data["correct_answer"],
-                    category=form.cleaned_data.get("category") or None,
+                    topic=form.cleaned_data["topic"],
+                    citations_references=form.cleaned_data["citations_references"],
+                    pertinence=form.cleaned_data["pertinence"],
                 )
             except EmbeddingServiceError:
                 form.add_error(None, "Servico de embeddings indisponivel, tente novamente.")
@@ -115,10 +118,16 @@ def edit_question(request, question_id):
             initial={
                 "statement": question.statement,
                 "correct_answer": "true" if question.correct_answer else "false",
-                "category": question.category or "",
+                "topic": question.topic,
+                "citations_references": question.citations_references,
+                "pertinence": question.pertinence,
             }
         )
-    return render(request, "moderation/_edit_form.html", {"form": form, "question": question})
+    return render(
+        request,
+        "moderation/_edit_form.html",
+        {"form": form, "question": question, "new_topic_choice": NEW_TOPIC_CHOICE},
+    )
 
 
 @admin_required

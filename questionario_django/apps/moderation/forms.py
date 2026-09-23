@@ -1,5 +1,8 @@
 from django import forms
 
+from apps.questions.forms import NEW_TOPIC_CHOICE
+from apps.questions.models import Question
+
 from .models import REASON_CATEGORY_CHOICES
 
 
@@ -30,7 +33,32 @@ class QuestionEditForm(forms.Form):
         widget=forms.RadioSelect,
         label="Resposta correta",
     )
-    category = forms.CharField(max_length=120, required=False, label="Categoria (opcional)")
+    topic = forms.ChoiceField(label="Tópico da questão")
+    new_topic = forms.CharField(
+        max_length=120,
+        required=False,
+        label="Novo tópico",
+        help_text="Obrigatorio quando 'Novo Tópico' estiver selecionado acima.",
+    )
+    citations_references = forms.CharField(widget=forms.Textarea, label="Citações e referências")
+    pertinence = forms.CharField(widget=forms.Textarea, label="Pertinência")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        existing_topics = Question.objects.order_by("topic").values_list("topic", flat=True).distinct()
+        self.fields["topic"].choices = [(NEW_TOPIC_CHOICE, "Novo Tópico")] + [
+            (topic, topic) for topic in existing_topics
+        ]
+
+    def clean(self):
+        cleaned = super().clean()
+        topic = cleaned.get("topic")
+        new_topic = (cleaned.get("new_topic") or "").strip()
+        if topic == NEW_TOPIC_CHOICE:
+            if not new_topic:
+                self.add_error("new_topic", "Digite o novo tópico.")
+            cleaned["topic"] = new_topic
+        return cleaned
 
 
 class AppSettingsForm(forms.Form):

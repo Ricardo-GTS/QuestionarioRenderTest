@@ -3,7 +3,7 @@ from django.shortcuts import render
 from django_ratelimit.decorators import ratelimit
 
 from . import services
-from .forms import QuestionForm
+from .forms import NEW_TOPIC_CHOICE, QuestionForm
 from .models import Question
 
 
@@ -27,7 +27,9 @@ def create_question(request):
                     author=request.user,
                     statement=form.cleaned_data["statement"],
                     correct_answer=form.cleaned_data["correct_answer"],
-                    category=form.cleaned_data.get("category") or None,
+                    topic=form.cleaned_data["topic"],
+                    citations_references=form.cleaned_data["citations_references"],
+                    pertinence=form.cleaned_data["pertinence"],
                     embedding=embedding,
                 )
                 success_message = "Pergunta criada com sucesso."
@@ -38,6 +40,7 @@ def create_question(request):
         "similar_questions": similar_questions,
         "success_message": success_message,
         "error_message": error_message,
+        "new_topic_choice": NEW_TOPIC_CHOICE,
     }
     if request.headers.get("HX-Request"):
         return render(request, "questions/_form.html", context)

@@ -1,8 +1,10 @@
 <div class="card" id="question-{{ question.id }}">
   <p><strong>{{ question.statement }}</strong></p>
   <p>Autor: {{ question.author.name }} · Resposta: {% if question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}
-    {% if question.category %}· Categoria: {{ question.category }}{% endif %}
+    · Tópico: {{ question.topic }}
   </p>
+  {% if question.citations_references %}<p>Citações e referências: {{ question.citations_references }}</p>{% endif %}
+  {% if question.pertinence %}<p>Pertinência: {{ question.pertinence }}</p>{% endif %}
   <button type="button" class="btn" hx-get="{% url 'moderation:edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">Editar</button>
   <form style="display:inline" hx-post="{% url 'moderation:reactivate_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">
     {% csrf_token %}

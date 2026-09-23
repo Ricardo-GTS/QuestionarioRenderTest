@@ -6,8 +6,6 @@ from apps.core.services import get_effective_settings
 
 from .models import Report, ReportStatus
 
-NO_CATEGORY_LABEL = "Sem categoria"
-
 
 def should_flag(report_count: int, threshold: int, current_status: str) -> bool:
     """Pura, sem dependencia de DB -- porte literal de app/services/moderation.py."""
@@ -72,7 +70,9 @@ def resolve_reported_question(question, *, approve_removal: bool) -> None:
     Report.objects.filter(question=question, status=ReportStatus.PENDING).update(status=new_report_status)
 
 
-def update_question(question, *, statement=None, correct_answer=None, category=None):
+def update_question(
+    question, *, statement=None, correct_answer=None, topic=None, citations_references=None, pertinence=None
+):
     from apps.questions.services import get_embedding
 
     statement_changed = statement is not None and statement != question.statement
@@ -80,8 +80,12 @@ def update_question(question, *, statement=None, correct_answer=None, category=N
         question.statement = statement
     if correct_answer is not None:
         question.correct_answer = correct_answer
-    if category is not None:
-        question.category = category or None
+    if topic is not None:
+        question.topic = topic
+    if citations_references is not None:
+        question.citations_references = citations_references
+    if pertinence is not None:
+        question.pertinence = pertinence
     if statement_changed:
         question.embedding = get_embedding(question.statement)
     question.save()
@@ -142,9 +146,9 @@ def compute_stats() -> dict:
     questions_by_status = {row["status"]: row["c"] for row in Question.objects.values("status").annotate(c=Count("id"))}
     attempts = list(QuizAttempt.objects.values_list("score", "total"))
 
-    questions_by_category = [
-        {"category": row["category"] or NO_CATEGORY_LABEL, "count": row["c"]}
-        for row in Question.objects.values("category").annotate(c=Count("id")).order_by("-c")
+    questions_by_topic = [
+        {"topic": row["topic"], "count": row["c"]}
+        for row in Question.objects.values("topic").annotate(c=Count("id")).order_by("-c")
     ]
     reports_by_category = [
         {"category": row["reason_category"], "count": row["c"]}
@@ -159,6 +163,6 @@ def compute_stats() -> dict:
         "removed_questions": questions_by_status.get("removed", 0),
         "total_quiz_attempts": len(attempts),
         "average_score_percent": compute_average_score_percent(attempts),
-        "questions_by_category": questions_by_category,
+        "questions_by_topic": questions_by_topic,
         "reports_by_category": reports_by_category,
     }
