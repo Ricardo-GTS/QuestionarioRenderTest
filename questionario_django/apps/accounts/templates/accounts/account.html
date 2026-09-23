@@ -12,6 +12,19 @@
   </form>
 </div>
 {% endif %}
+{% if reauthenticated %}
+<div class="card">
+  <p>Alteração de e-mail e senha liberada por mais {{ reauth_minutes_left }} min.</p>
+</div>
+{% else %}
+<div class="card">
+  <p>Para alterar o e-mail ou a senha, confirme que é você: enviaremos um código para <strong>{{ email_masked }}</strong>.</p>
+  <form method="post" action="{% url 'accounts:reauth_start' %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">Enviar código para alterar e-mail ou senha</button>
+  </form>
+</div>
+{% endif %}
 <div class="card">
   <form method="post" action="{% url 'accounts:account' %}">
     {% csrf_token %}
@@ -34,7 +47,7 @@
     <p>
       <label for="id_password">Nova senha</label>
       {{ form.password }}
-      <small>{{ form.password.help_text }}</small>
+      <small>{% if reauthenticated %}{{ form.password.help_text }}{% else %}Bloqueado até você confirmar com o código.{% endif %}</small>
       {{ form.password.errors }}
     </p>
     <button type="submit" class="btn btn-primary">Salvar</button>

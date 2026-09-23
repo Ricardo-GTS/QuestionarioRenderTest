@@ -31,5 +31,6 @@
   {% endif %}
 </div>
 
+<p><a href="{% url 'accounts:password_reset_request' %}">Esqueci minha senha</a></p>
 <p>Nao tem conta? <a href="{% url 'accounts:register' %}">Cadastre-se</a></p>
 {% endblock %}

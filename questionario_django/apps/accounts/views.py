@@ -1,7 +1,11 @@
+import math
+import time
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -11,8 +15,16 @@ from django_ratelimit.decorators import ratelimit
 from apps.core.permissions import admin_required
 
 from . import services
-from .forms import AccountForm, EmailCodeForm, LoginForm, RegisterForm, RegistrationNumberForm
-from .models import EmailChangeRequest, PendingRegistration, User
+from .forms import (
+    AccountForm,
+    EmailCodeForm,
+    ForgotPasswordForm,
+    LoginForm,
+    RegisterForm,
+    RegistrationNumberForm,
+    ResetPasswordForm,
+)
+from .models import EmailChangeRequest, PendingRegistration, ReauthRequest, User
 from .services import verify_google_id_token
 
 
@@ -38,16 +50,58 @@ def _code_error(result) -> str:
     return CODE_ERRORS[result.status]
 
 
-def _render_confirm_code(request, *, form, target, obj, mode):
+CONFIRM_PAGES = {
+    "register": {
+        "title": "Confirme seu e-mail",
+        "note": "Sua conta só é criada depois da confirmação.",
+        "confirm_url": "accounts:confirm_registration",
+        "resend_url": "accounts:resend_registration_code",
+        "back_url": "accounts:register",
+        "back_query": "?editar=1",
+        "back_label": "Usar outro e-mail",
+    },
+    "email_change": {
+        "title": "Confirme o novo e-mail",
+        "note": "O e-mail da conta só muda depois da confirmação.",
+        "confirm_url": "accounts:confirm_email_change",
+        "resend_url": "accounts:resend_email_change_code",
+        "cancel_url": "accounts:cancel_email_change",
+        "cancel_label": "Cancelar troca de e-mail",
+    },
+    "reauth": {
+        "title": "Confirme que é você",
+        "note": "Depois de confirmar, você pode alterar o e-mail e a senha da conta por 10 minutos.",
+        "confirm_url": "accounts:confirm_reauth",
+        "resend_url": "accounts:resend_reauth_code",
+        "back_url": "accounts:account",
+        "back_query": "",
+        "back_label": "Voltar para Minha Conta",
+    },
+    "password_reset": {
+        "title": "Redefinir senha",
+        "note": "Se houver uma conta, o código chega em instantes. Digite o código e a nova senha.",
+        "confirm_url": "accounts:password_reset_confirm",
+        "resend_url": "accounts:password_reset_resend",
+        "back_url": "accounts:password_reset_request",
+        "back_query": "",
+        "back_label": "Usar outro e-mail",
+    },
+}
+
+
+def _render_confirm_code(request, *, form, target, mode, timers, destination_text=None):
+    """target: e-mail pra onde o codigo foi (mostrado mascarado). Sem target, a tela
+    mostra destination_text no lugar (ex: recuperacao de senha pela matricula)."""
     return render(
         request,
         "accounts/confirm_code.html",
         {
             "form": form,
-            "email_masked": services.mask_email(target),
-            "mode": mode,
+            "email_masked": services.mask_email(target) if target else None,
+            "destination_text": destination_text,
+            "page": CONFIRM_PAGES[mode],
             "ttl_minutes": services.CODE_TTL_MINUTES,
-            **services.code_timers(obj, target),
+            **timers,
         },
     )
 
@@ -117,7 +171,9 @@ def confirm_registration(request):
             return redirect("accounts:register")
         form.add_error("code", _code_error(result))
         pending.refresh_from_db()
-    return _render_confirm_code(request, form=form, target=pending.email, obj=pending, mode="register")
+    return _render_confirm_code(
+        request, form=form, target=pending.email, mode="register", timers=services.code_timers(pending, pending.email)
+    )
 
 
 @ratelimit(key="ip", rate="5/m", method="POST", block=True)
@@ -187,11 +243,20 @@ def google_login(request):
     return redirect(settings.LOGIN_REDIRECT_URL)
 
 
+REAUTH_SESSION_KEY = "reauth_until"
+
+
+def _reauth_seconds_left(request) -> int:
+    return services.reauth_seconds_left(request.session.get(REAUTH_SESSION_KEY), time.time())
+
+
 @login_required
 def account(request):
     user = request.user
+    reauthenticated = _reauth_seconds_left(request) > 0
+    initial = {"name": user.name, "email": user.email}
     if request.method == "POST":
-        form = AccountForm(request.POST)
+        form = AccountForm(request.POST, initial=initial, reauthenticated=reauthenticated)
         if form.is_valid():
             new_email = form.cleaned_data["email"].strip().lower()
             email_changed = new_email != user.email
@@ -204,7 +269,9 @@ def account(request):
                     user.set_password(password)
                 user.save()
                 if password:
+                    # Mantem esta sessao; as outras sessoes da conta caem (hash de sessao muda).
                     update_session_auth_hash(request, user)
+                    transaction.on_commit(lambda: services.send_password_changed_notice(user.email))
                 if not email_changed:
                     messages.success(request, "Conta atualizada com sucesso")
                     return redirect("accounts:account")
@@ -214,16 +281,67 @@ def account(request):
                     messages.error(request, error)
                 return redirect("accounts:confirm_email_change")
     else:
-        form = AccountForm(initial={"name": user.name, "email": user.email})
+        form = AccountForm(initial=initial, reauthenticated=reauthenticated)
     pending_change = EmailChangeRequest.objects.filter(user=user).first()
     return render(
         request,
         "accounts/account.html",
         {
             "form": form,
+            "reauthenticated": reauthenticated,
+            "reauth_minutes_left": math.ceil(_reauth_seconds_left(request) / 60),
+            "email_masked": services.mask_email(user.email),
             "pending_change_email": services.mask_email(pending_change.new_email) if pending_change else None,
         },
     )
+
+
+@login_required
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@require_POST
+def reauth_start(request):
+    error = services.start_reauth(request.user)
+    if error:
+        messages.error(request, error)
+    return redirect("accounts:confirm_reauth")
+
+
+@login_required
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+def confirm_reauth(request):
+    if not ReauthRequest.objects.filter(user=request.user).exists():
+        return redirect("accounts:account")
+    form = EmailCodeForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        result = services.complete_reauth(request.user, form.cleaned_data["code"])
+        if result.status == "ok":
+            request.session[REAUTH_SESSION_KEY] = time.time() + services.REAUTH_MINUTES * 60
+            messages.success(
+                request, f"Confirmado. Você pode alterar e-mail e senha pelos próximos {services.REAUTH_MINUTES} minutos."
+            )
+            return redirect("accounts:account")
+        if result.status == "missing":
+            return redirect("accounts:account")
+        form.add_error("code", _code_error(result))
+    return _render_confirm_code(
+        request,
+        form=form,
+        target=request.user.email,
+        mode="reauth",
+        timers=services.reauth_timers(request.user),
+    )
+
+
+@login_required
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@require_POST
+def resend_reauth_code(request):
+    error = services.start_reauth(request.user)
+    if error:
+        messages.error(request, error)
+    else:
+        messages.success(request, "Enviamos um novo código.")
+    return redirect("accounts:confirm_reauth")
 
 
 @login_required
@@ -244,7 +362,9 @@ def confirm_email_change(request):
             return redirect("accounts:account")
         form.add_error("code", _code_error(result))
         req.refresh_from_db()
-    return _render_confirm_code(request, form=form, target=req.new_email, obj=req, mode="email_change")
+    return _render_confirm_code(
+        request, form=form, target=req.new_email, mode="email_change", timers=services.code_timers(req, req.new_email)
+    )
 
 
 @login_required
@@ -268,6 +388,72 @@ def cancel_email_change(request):
     EmailChangeRequest.objects.filter(user=request.user).delete()
     messages.success(request, "Troca de e-mail cancelada.")
     return redirect("accounts:account")
+
+
+RESET_SESSION_KEY = "password_reset_identifier"
+RESET_CODE_ERROR = (
+    "Código incorreto ou expirado. Confira o código mais recente ou peça um novo "
+    "(depois de 5 tentativas erradas, o código deixa de valer)."
+)
+
+
+def _session_reset_identifier(request):
+    identifier = request.session.get(RESET_SESSION_KEY)
+    return tuple(identifier) if identifier else None
+
+
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+def password_reset_request(request):
+    form = ForgotPasswordForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        identifier = form.cleaned_data["identifier"]
+        services.start_password_reset(identifier)
+        request.session[RESET_SESSION_KEY] = list(identifier)
+        return redirect("accounts:password_reset_confirm")
+    return render(request, "accounts/password_reset_request.html", {"form": form})
+
+
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+def password_reset_confirm(request):
+    """Mesma tela e mesmas mensagens com ou sem conta (nao revela quais existem)."""
+    identifier = _session_reset_identifier(request)
+    if identifier is None:
+        return redirect("accounts:password_reset_request")
+    form = ResetPasswordForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        result = services.complete_password_reset(
+            identifier, form.cleaned_data["code"], form.cleaned_data["new_password"]
+        )
+        if result.status == "ok":
+            del request.session[RESET_SESSION_KEY]
+            result.user.backend = "django.contrib.auth.backends.ModelBackend"
+            login(request, result.user)
+            messages.success(request, "Senha alterada. Você já está conectado.")
+            return redirect(settings.LOGIN_REDIRECT_URL)
+        # Mensagem unica (sem "restam N tentativas"): a contagem so' andaria se a conta existisse.
+        form.add_error("code", RESET_CODE_ERROR)
+    kind, value = identifier
+    # Pela matricula, NAO mostra o e-mail mascarado: entregaria que a matricula existe e
+    # daria uma pista do e-mail de outra pessoa.
+    return _render_confirm_code(
+        request,
+        form=form,
+        target=value if kind == "email" else None,
+        destination_text="o e-mail cadastrado nessa matrícula" if kind == "registration_number" else None,
+        mode="password_reset",
+        timers=services.password_reset_timers(identifier),
+    )
+
+
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+@require_POST
+def password_reset_resend(request):
+    identifier = _session_reset_identifier(request)
+    if identifier is None:
+        return redirect("accounts:password_reset_request")
+    services.resend_password_reset_code(identifier)
+    messages.success(request, "Se houver uma conta, enviamos um novo código.")
+    return redirect("accounts:password_reset_confirm")
 
 
 @login_required

@@ -105,6 +105,14 @@ O cadastro so' cria a conta depois que o aluno digita o codigo de 6 digitos envi
 - **Dev (Docker):** os e-mails caem no Mailpit, em http://localhost:8025 -- nada sai pra internet.
 - **Producao com Gmail:** crie uma conta Gmail so' pro sistema, ative a verificacao em 2 etapas, gere uma senha de app em https://myaccount.google.com/apppasswords e troque no `.env` o bloco de e-mail pelo bloco do Gmail (comentado no `.env.example`). Reinicie o container `django`. Sem `EMAIL_HOST` em producao, o codigo iria pro log -- sempre configure o SMTP.
 
+## Alterar e-mail ou senha (pagina Conta)
+
+O nome pode ser alterado direto. Para alterar o e-mail ou a senha, o aluno clica em "Enviar codigo para alterar e-mail ou senha", recebe um codigo no e-mail atual e, depois de digita-lo, tem 10 minutos para fazer as alteracoes. Trocar o e-mail ainda pede o codigo enviado ao novo e-mail; trocar a senha desconecta as outras sessoes e manda um aviso por e-mail.
+
+## Recuperacao de senha
+
+"Esqueci minha senha" na tela de login: o aluno informa o e-mail ou a matricula e recebe, no e-mail cadastrado na conta, um codigo de 6 digitos (mesmas regras do codigo do cadastro). Na tela seguinte, digita o codigo e a nova senha; a senha e' trocada, ele entra logado, as outras sessoes abertas da conta sao desconectadas e chega um e-mail avisando da troca. A resposta e' sempre a mesma, exista ou nao conta com aquele e-mail.
+
 ## Concorrencia e rate limiting
 
 - **Rate limiting:** login/registro (5/minuto por IP), confirmacao de codigo (10/minuto) e reenvio de codigo (5/minuto), e criacao de pergunta (20/minuto por IP), via `django-ratelimit`. Excede o limite -> `429 Too Many Requests`.
@@ -122,7 +130,6 @@ Quem estiver listado em `ADMIN_EMAILS` vira admin automaticamente ao logar (sem 
 
 ## Fora do escopo do MVP
 
-- Recuperacao de senha (fluxo por e-mail) — fase 2
 - Gamificacao (ranking, pontos, badges)
 - Perguntas em formatos alem de V/F
 - Tabela de auditoria dedicada para acoes do admin (hoje fica so no log estruturado)

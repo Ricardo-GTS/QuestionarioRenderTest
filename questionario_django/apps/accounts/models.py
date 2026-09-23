@@ -97,6 +97,26 @@ class EmailChangeRequest(EmailCodeBase):
         return f"{self.user.email} -> {self.new_email}"
 
 
+class PasswordResetRequest(EmailCodeBase):
+    """Pedido de redefinicao de senha ("Esqueci minha senha") -- um por usuario; pedir
+    de novo gera um codigo novo e invalida o anterior."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="password_reset_request")
+
+    def __str__(self):
+        return self.user.email
+
+
+class ReauthRequest(EmailCodeBase):
+    """Codigo enviado ao e-mail ATUAL pra liberar a troca de e-mail/senha na pagina Conta
+    por REAUTH_MINUTES (confirma que e' o dono da conta, nao so' alguem com a sessao aberta)."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="reauth_request")
+
+    def __str__(self):
+        return self.user.email
+
+
 class EmailSendLog(models.Model):
     """Um registro por codigo enviado -- base do cooldown e do limite por hora POR
     E-MAIL de destino (vale entre sessoes/usuarios, protege a caixa de terceiros e a

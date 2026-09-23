@@ -1,39 +1,40 @@
 {% extends "core/base.html" %}
-{% block title %}Confirme seu e-mail - Questionario{% endblock %}
+{% block title %}{{ page.title }} - Questionario{% endblock %}
 {% block content %}
-<h1>{% if mode == "register" %}Confirme seu e-mail{% else %}Confirme o novo e-mail{% endif %}</h1>
+<h1>{{ page.title }}</h1>
 <div class="card">
-  <p>Enviamos um código de 6 números para <strong>{{ email_masked }}</strong>.
-    {% if mode == "register" %}Sua conta só é criada depois da confirmação.{% else %}O e-mail da conta só muda depois da confirmação.{% endif %}
-  </p>
+  <p>Enviamos um código de 6 números para {% if email_masked %}<strong>{{ email_masked }}</strong>{% else %}{{ destination_text }}{% endif %}. {{ page.note }}</p>
   <p id="code-expiry" data-expires-in="{{ expires_in }}">
     {% if expires_in %}O código vale por {{ ttl_minutes }} minutos a partir do envio.{% else %}O código expirou. Peça um novo código.{% endif %}
   </p>
 
-  <form method="post" action="{% if mode == 'register' %}{% url 'accounts:confirm_registration' %}{% else %}{% url 'accounts:confirm_email_change' %}{% endif %}">
+  <form method="post" action="{% url page.confirm_url %}">
     {% csrf_token %}
     {{ form.non_field_errors }}
-    <p>
-      <label for="id_code">{{ form.code.label }}</label>
-      {{ form.code }}
-      {{ form.code.errors }}
-    </p>
+    {% for field in form %}
+      <p>
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {{ field.errors }}
+      </p>
+    {% endfor %}
     <button type="submit" class="btn btn-primary">Confirmar</button>
   </form>
 
-  <form method="post" action="{% if mode == 'register' %}{% url 'accounts:resend_registration_code' %}{% else %}{% url 'accounts:resend_email_change_code' %}{% endif %}">
+  <form method="post" action="{% url page.resend_url %}">
     {% csrf_token %}
     <button type="submit" class="btn" id="resend-button" data-resend-in="{{ resend_in }}"{% if resend_in %} disabled{% endif %}>
       {% if resend_in %}Reenviar em {{ resend_in }} s{% else %}Reenviar código{% endif %}
     </button>
   </form>
 
-  {% if mode == "register" %}
-    <p><a href="{% url 'accounts:register' %}?editar=1">Usar outro e-mail</a></p>
-  {% else %}
-    <form method="post" action="{% url 'accounts:cancel_email_change' %}">
+  {% if page.back_url %}
+    <p><a href="{% url page.back_url %}{{ page.back_query }}">{{ page.back_label }}</a></p>
+  {% endif %}
+  {% if page.cancel_url %}
+    <form method="post" action="{% url page.cancel_url %}">
       {% csrf_token %}
-      <button type="submit" class="btn">Cancelar troca de e-mail</button>
+      <button type="submit" class="btn">{{ page.cancel_label }}</button>
     </form>
   {% endif %}
   <p><small>Não recebeu? Confira a caixa de spam.</small></p>

@@ -31,6 +31,7 @@ MAX_ATTEMPTS = 5
 RESEND_COOLDOWN_SECONDS = 60
 MAX_SENDS_PER_HOUR = 5
 PENDING_RETENTION_HOURS = 24
+REAUTH_MINUTES = 10
 
 SEND_WINDOW = timedelta(hours=1)
 SEND_FAILED = "Não foi possível enviar o e-mail. Tente reenviar o código em instantes."
@@ -86,6 +87,13 @@ def attempts_exhausted(attempts: int) -> bool:
 def mask_email(email: str) -> str:
     local, _, domain = email.partition("@")
     return f"{local[:1]}***@{domain}"
+
+
+def reauth_seconds_left(reauth_until: float | None, now_ts: float) -> int:
+    """reauth_until: timestamp (segundos) guardado na sessao depois do codigo certo."""
+    if not reauth_until:
+        return 0
+    return max(0, math.ceil(reauth_until - now_ts))
 
 
 def normalize_code(value: str) -> str:
@@ -147,7 +155,7 @@ def _check_locked(obj, code: str, now) -> CodeCheck:
     return CodeCheck("invalid", attempts_left=MAX_ATTEMPTS - obj.attempts)
 
 
-def _send_new_code(obj, email: str, now=None) -> str | None:
+def _send_new_code(obj, email: str, now=None, purpose: str = "confirm") -> str | None:
     """Gera e envia um codigo novo. Devolve a mensagem de erro pro usuario, ou None se enviou."""
     from .models import EmailSendLog
 
@@ -156,7 +164,7 @@ def _send_new_code(obj, email: str, now=None) -> str | None:
         code = issue_code(obj, email, now)
     except CodeNotSent as exc:
         return str(exc)
-    if not send_code_email(email, code):
+    if not send_code_email(email, code, purpose):
         # Nada saiu -- sem EmailSendLog, o reenvio fica liberado na hora.
         return SEND_FAILED
     EmailSendLog.objects.create(email=email, sent_at=now)
@@ -176,11 +184,22 @@ def code_timers(obj, email: str, now=None) -> dict:
 # --- E-mails ---
 
 
-def send_code_email(email: str, code: str) -> bool:
-    context = {"code": code, "ttl_minutes": CODE_TTL_MINUTES}
+CODE_EMAILS = {
+    "confirm": ("Seu código de confirmação – Questionario", "Seu código de confirmação do Questionario é:"),
+    "reset": ("Código para redefinir sua senha – Questionario", "Seu código para redefinir a senha do Questionario é:"),
+    "reauth": (
+        "Código para alterar sua conta – Questionario",
+        "Seu código para alterar o e-mail ou a senha da sua conta no Questionario é:",
+    ),
+}
+
+
+def send_code_email(email: str, code: str, purpose: str = "confirm") -> bool:
+    subject, intro = CODE_EMAILS[purpose]
+    context = {"code": code, "ttl_minutes": CODE_TTL_MINUTES, "intro": intro}
     try:
         send_mail(
-            subject="Seu código de confirmação – Questionario",
+            subject=subject,
             message=render_to_string("accounts/email/code.txt", context),
             html_message=render_to_string("accounts/email/code.html", context),
             from_email=None,
@@ -204,6 +223,18 @@ def send_email_changed_notice(old_email: str, new_email: str) -> None:
         )
     except Exception:
         logger.exception("Falha ao avisar troca de e-mail para %s", mask_email(old_email))
+
+
+def send_password_changed_notice(email: str) -> None:
+    try:
+        send_mail(
+            subject="Sua senha foi alterada – Questionario",
+            message=render_to_string("accounts/email/password_changed.txt", {}),
+            from_email=None,
+            recipient_list=[email],
+        )
+    except Exception:
+        logger.exception("Falha ao avisar troca de senha para %s", mask_email(email))
 
 
 # --- Cadastro pendente ---
@@ -310,3 +341,102 @@ def complete_email_change(user, code: str, now=None) -> CodeCheck:
     req.delete()
     transaction.on_commit(lambda: send_email_changed_notice(old_email, user.email))
     return CodeCheck("ok", user=user)
+
+
+# --- Recuperacao de senha ---
+
+
+def _user_for_reset(identifier):
+    """identifier: ("email", valor) ou ("registration_number", valor), vindo do
+    ForgotPasswordForm. O codigo sempre vai pro e-mail cadastrado na conta encontrada."""
+    from .models import User
+
+    kind, value = identifier
+    users = User.objects.filter(is_active=True)
+    if kind == "registration_number":
+        return users.filter(registration_number=value).first()
+    return users.filter(email__iexact=value).first()
+
+
+def start_password_reset(identifier, now=None) -> None:
+    """Envia o codigo se existir conta ativa pra esse e-mail/matricula. Nao devolve nada
+    de proposito: a view responde igual com ou sem conta (nao revela quais existem)."""
+    from .models import PasswordResetRequest
+
+    user = _user_for_reset(identifier)
+    if user is None:
+        return
+    req, _ = PasswordResetRequest.objects.get_or_create(user=user)
+    error = _send_new_code(req, user.email, now, purpose="reset")
+    if error:
+        logger.info("Codigo de redefinicao nao enviado para %s: %s", mask_email(user.email), error)
+
+
+def resend_password_reset_code(identifier) -> None:
+    start_password_reset(identifier)
+
+
+def password_reset_timers(identifier, now=None) -> dict:
+    """Timers da tela. Sem conta/pedido, mostra os valores de um envio recem-feito
+    (mesma tela pra quem tem e quem nao tem conta)."""
+    from .models import PasswordResetRequest
+
+    user = _user_for_reset(identifier)
+    req = PasswordResetRequest.objects.filter(user=user).first() if user else None
+    if req is None:
+        return {"expires_in": CODE_TTL_MINUTES * 60, "resend_in": RESEND_COOLDOWN_SECONDS}
+    return code_timers(req, user.email, now)
+
+
+@transaction.atomic
+def complete_password_reset(identifier, code: str, new_password: str, now=None) -> CodeCheck:
+    """Confere o codigo e troca a senha. Trocar a senha invalida as outras sessoes do
+    usuario (o hash de sessao do Django muda junto)."""
+    from .models import PasswordResetRequest
+
+    now = now or timezone.now()
+    user = _user_for_reset(identifier)
+    req = PasswordResetRequest.objects.select_for_update().filter(user=user).first() if user else None
+    if req is None:
+        return CodeCheck("invalid", attempts_left=MAX_ATTEMPTS)
+    result = _check_locked(req, normalize_code(code), now)
+    if result.status != "ok":
+        return result
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+    req.delete()
+    transaction.on_commit(lambda: send_password_changed_notice(user.email))
+    return CodeCheck("ok", user=user)
+
+
+# --- Confirmar que e' voce (liberar troca de e-mail/senha na Conta) ---
+
+
+def start_reauth(user, now=None) -> str | None:
+    from .models import ReauthRequest
+
+    req, _ = ReauthRequest.objects.get_or_create(user=user)
+    return _send_new_code(req, user.email, now, purpose="reauth")
+
+
+def reauth_timers(user, now=None) -> dict:
+    from .models import ReauthRequest
+
+    req = ReauthRequest.objects.filter(user=user).first()
+    if req is None:
+        return {"expires_in": 0, "resend_in": 0}
+    return code_timers(req, user.email, now)
+
+
+@transaction.atomic
+def complete_reauth(user, code: str, now=None) -> CodeCheck:
+    from .models import ReauthRequest
+
+    now = now or timezone.now()
+    req = ReauthRequest.objects.select_for_update().filter(user=user).first()
+    if req is None:
+        return CodeCheck("missing")
+    result = _check_locked(req, normalize_code(code), now)
+    if result.status == "ok":
+        req.delete()
+    return result

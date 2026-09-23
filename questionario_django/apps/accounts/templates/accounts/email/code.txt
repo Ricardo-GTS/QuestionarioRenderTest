@@ -1,6 +1,6 @@
 Olá!
 
-Seu código de confirmação do Questionario é: {{ code }}
+{{ intro }} {{ code }}
 
 Ele vale por {{ ttl_minutes }} minutos. Se você pedir um novo código, este deixa de valer.
 

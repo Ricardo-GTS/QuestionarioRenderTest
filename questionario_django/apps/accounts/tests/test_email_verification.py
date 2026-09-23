@@ -253,7 +253,11 @@ def test_google_login_rejects_unverified_email(client, settings):
 
 
 def _logged_user(client):
+    """Cadastra, loga e ja' confirma a identidade (libera troca de e-mail/senha na Conta)."""
     register_user(client, REGISTER)
+    _pass_cooldown()  # o codigo do cadastro acabou de ir pro mesmo e-mail
+    client.post(reverse("accounts:reauth_start"))
+    client.post(reverse("accounts:confirm_reauth"), {"code": _last_code(REGISTER["email"])})
     mail.outbox.clear()
     return User.objects.get(email=REGISTER["email"])
 
