@@ -12,7 +12,7 @@ from pgvector.django import CosineDistance
 
 from apps.core.services import get_effective_settings
 
-from .models import Question, QuestionStatus
+from .models import Question, QuestionStatus, Topic
 
 
 class EmbeddingServiceError(Exception):
@@ -62,3 +62,10 @@ def find_similar_active_questions(embedding, limit: int = 5) -> list[SimilarQues
     )
     rows = [(q, q.distance) for q in queryset]
     return filter_by_threshold(rows, threshold)
+
+
+def list_topic_names() -> list[str]:
+    """Uniao do catalogo Topic com os topicos ja usados em perguntas, ordenada."""
+    names = set(Topic.objects.values_list("name", flat=True))
+    names |= set(Question.objects.values_list("topic", flat=True).distinct())
+    return sorted(names, key=str.casefold)

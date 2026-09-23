@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Question
+from .models import Question, Topic
 
 
 @admin.register(Question)
@@ -18,3 +18,8 @@ class QuestionAdmin(admin.ModelAdmin):
         return f"vector[{len(obj.embedding)}]"
 
     embedding_preview.short_description = "Embedding"
+
+
+@admin.register(Topic)
+class TopicAdmin(admin.ModelAdmin):
+    search_fields = ("name",)

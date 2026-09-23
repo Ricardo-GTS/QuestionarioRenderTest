@@ -2,6 +2,7 @@
   <a href="{% url 'moderation:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Visao Geral</a>
   <a href="{% url 'moderation:pending_reports' %}" class="{% if request.resolver_match.url_name == 'pending_reports' %}active{% endif %}">Moderacao</a>
   <a href="{% url 'moderation:removed_list' %}" class="{% if request.resolver_match.url_name == 'removed_list' %}active{% endif %}">Perguntas Removidas</a>
+  <a href="{% url 'moderation:topic_list' %}" class="{% if request.resolver_match.url_name == 'topic_list' %}active{% endif %}">Topicos</a>
   <a href="{% url 'accounts:admin_user_list' %}" class="{% if request.resolver_match.url_name == 'admin_user_list' %}active{% endif %}">Usuarios</a>
   <a href="{% url 'moderation:admin_settings' %}" class="{% if request.resolver_match.url_name == 'admin_settings' %}active{% endif %}">Configuracoes</a>
 </nav>

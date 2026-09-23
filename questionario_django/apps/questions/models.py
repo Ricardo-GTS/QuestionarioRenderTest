@@ -36,3 +36,18 @@ class Question(models.Model):
 
     def __str__(self):
         return self.statement[:60]
+
+
+class Topic(models.Model):
+    """Catalogo de topicos gerenciado pelo admin. Question.topic continua sendo
+    texto (nao FK): o select de topicos e' a uniao deste catalogo com os topicos
+    ja usados em perguntas -- ver questions.services.list_topic_names. Esta tabela
+    so' precisa guardar topicos criados pelo admin que ainda nao tem pergunta."""
+
+    name = models.CharField(max_length=120, unique=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name

@@ -15,5 +15,9 @@ urlpatterns = [
     path("admin/removidas/<int:question_id>/reativar", views.reactivate_question, name="reactivate_question"),
     path("admin/removidas/<int:question_id>/editar", views.edit_question, name="edit_question"),
     path("admin/removidas/<int:question_id>/cancelar", views.cancel_edit_question, name="cancel_edit_question"),
+    path("admin/topicos", views.topic_list, name="topic_list"),
+    path("admin/topicos/criar", views.topic_create, name="topic_create"),
+    path("admin/topicos/renomear", views.topic_rename, name="topic_rename"),
+    path("admin/topicos/excluir", views.topic_delete, name="topic_delete"),
     path("admin/configuracoes", views.admin_settings, name="admin_settings"),
 ]

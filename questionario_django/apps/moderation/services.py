@@ -1,5 +1,6 @@
 """Porte de backend/app/services/moderation.py + stats.py."""
 
+from django.db import transaction
 from django.db.models import Count
 
 from apps.core.services import get_effective_settings
@@ -91,6 +92,80 @@ def update_question(
     question.save()
     return question
 
+
+class TopicError(ValueError):
+    pass
+
+
+def list_topics_with_counts() -> list[dict]:
+    """Todos os topicos (catalogo + usados em perguntas), com quantas perguntas usam cada um."""
+    from apps.questions.models import Question
+    from apps.questions.services import list_topic_names
+
+    counts = {row["topic"]: row["c"] for row in Question.objects.values("topic").annotate(c=Count("id"))}
+    return [{"name": name, "count": counts.get(name, 0)} for name in list_topic_names()]
+
+
+def create_topic(name: str) -> None:
+    from apps.questions.models import Topic
+    from apps.questions.services import list_topic_names
+
+    name = name.strip()
+    if not name:
+        raise TopicError("Digite o nome do tópico.")
+    if name in list_topic_names():
+        raise TopicError(f"O tópico '{name}' já existe.")
+    Topic.objects.create(name=name)
+
+
+@transaction.atomic
+def rename_topic(old_name: str, new_name: str) -> None:
+    """Renomeia no catalogo e em todas as perguntas que usam o topico. Renomear para
+    um nome ja existente e' recusado -- mesclar e' feito via delete_topic(reassign_to=...)."""
+    from apps.questions.models import Question, Topic
+    from apps.questions.services import list_topic_names
+
+    new_name = new_name.strip()
+    names = list_topic_names()
+    if old_name not in names:
+        raise TopicError(f"O tópico '{old_name}' não existe.")
+    if not new_name:
+        raise TopicError("Digite o novo nome do tópico.")
+    if new_name == old_name:
+        return
+    if new_name in names:
+        raise TopicError(
+            f"O tópico '{new_name}' já existe. Para juntar os dois, exclua '{old_name}' "
+            f"movendo as perguntas para '{new_name}'."
+        )
+    Question.objects.filter(topic=old_name).update(topic=new_name)
+    Topic.objects.filter(name=old_name).delete()
+    Topic.objects.create(name=new_name)
+
+
+@transaction.atomic
+def delete_topic(name: str, *, reassign_to: str | None = None, delete_questions: bool = False) -> None:
+    """Exclui o topico. Se houver perguntas usando, e' preciso escolher o destino delas:
+    reassign_to (move para outro topico existente) ou delete_questions=True (apaga as
+    perguntas junto -- hard delete, os reports delas vao em cascata)."""
+    from apps.questions.models import Question, Topic
+    from apps.questions.services import list_topic_names
+
+    names = list_topic_names()
+    if name not in names:
+        raise TopicError(f"O tópico '{name}' não existe.")
+    questions = Question.objects.filter(topic=name)
+    if delete_questions:
+        questions.delete()
+    elif questions.exists():
+        if not reassign_to:
+            raise TopicError(
+                f"Há perguntas usando '{name}'. Escolha para qual tópico movê-las antes de excluir."
+            )
+        if reassign_to == name or reassign_to not in names:
+            raise TopicError("Escolha um tópico de destino válido e diferente do excluído.")
+        questions.update(topic=reassign_to)
+    Topic.objects.filter(name=name).delete()
 
 def compute_average_score_percent(attempts) -> float | None:
     """Pura -- porte literal de app/services/stats.py. attempts: list[tuple[score, total]]."""

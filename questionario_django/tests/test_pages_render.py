@@ -29,4 +29,5 @@ def test_admin_pages_render(client):
     assert client.get(reverse("moderation:pending_reports")).status_code == 200
     assert client.get(reverse("moderation:removed_list")).status_code == 200
     assert client.get(reverse("moderation:admin_settings")).status_code == 200
+    assert client.get(reverse("moderation:topic_list")).status_code == 200
     assert client.get(reverse("accounts:admin_user_list")).status_code == 200

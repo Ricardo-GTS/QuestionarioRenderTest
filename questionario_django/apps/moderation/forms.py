@@ -1,7 +1,7 @@
 from django import forms
 
+from apps.questions import services
 from apps.questions.forms import NEW_TOPIC_CHOICE
-from apps.questions.models import Question
 
 from .models import REASON_CATEGORY_CHOICES
 
@@ -45,9 +45,8 @@ class QuestionEditForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        existing_topics = Question.objects.order_by("topic").values_list("topic", flat=True).distinct()
         self.fields["topic"].choices = [(NEW_TOPIC_CHOICE, "Novo Tópico")] + [
-            (topic, topic) for topic in existing_topics
+            (topic, topic) for topic in services.list_topic_names()
         ]
 
     def clean(self):

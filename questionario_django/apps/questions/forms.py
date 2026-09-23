@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Question
+from . import services
 
 NEW_TOPIC_CHOICE = "__new_topic__"
 
@@ -29,9 +29,8 @@ class QuestionForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        existing_topics = Question.objects.order_by("topic").values_list("topic", flat=True).distinct()
         self.fields["topic"].choices = [(NEW_TOPIC_CHOICE, "Novo Tópico")] + [
-            (topic, topic) for topic in existing_topics
+            (topic, topic) for topic in services.list_topic_names()
         ]
 
     def clean(self):

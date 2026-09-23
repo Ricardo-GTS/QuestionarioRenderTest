@@ -11,11 +11,16 @@ from apps.questions.services import EmbeddingServiceError
 from .forms import AppSettingsForm, QuestionEditForm, ReportForm
 from .models import Report
 from .services import (
+    TopicError,
     approve_question,
     compute_stats,
+    create_topic,
+    delete_topic,
+    list_topics_with_counts,
     list_questions_by_status,
     list_questions_with_pending_reports,
     register_report,
+    rename_topic,
     resolve_reported_question,
     update_question,
 )
@@ -162,3 +167,46 @@ def admin_settings(request):
             }
         )
     return render(request, "moderation/settings.html", {"form": form, "error": error})
+
+
+def _render_topic_list(request, error=None):
+    return render(request, "moderation/topics.html", {"topics": list_topics_with_counts(), "error": error})
+
+
+@admin_required
+def topic_list(request):
+    return _render_topic_list(request)
+
+
+@admin_required
+@require_POST
+def topic_create(request):
+    try:
+        create_topic(request.POST.get("name", ""))
+    except TopicError as exc:
+        return _render_topic_list(request, error=str(exc))
+    return redirect("moderation:topic_list")
+
+
+@admin_required
+@require_POST
+def topic_rename(request):
+    try:
+        rename_topic(request.POST.get("topic", ""), request.POST.get("new_name", ""))
+    except TopicError as exc:
+        return _render_topic_list(request, error=str(exc))
+    return redirect("moderation:topic_list")
+
+
+@admin_required
+@require_POST
+def topic_delete(request):
+    try:
+        delete_topic(
+            request.POST.get("topic", ""),
+            reassign_to=request.POST.get("reassign_to") or None,
+            delete_questions=request.POST.get("mode") == "delete_questions",
+        )
+    except TopicError as exc:
+        return _render_topic_list(request, error=str(exc))
+    return redirect("moderation:topic_list")

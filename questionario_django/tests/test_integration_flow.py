@@ -310,3 +310,97 @@ def test_admin_settings_update():
     assert current.similarity_threshold == 0.8
     assert current.quiz_size == 5
     assert current.report_threshold == 2
+
+
+def _make_question(author, statement, topic):
+    from conftest import _fake_get_embedding
+
+    return Question.objects.create(
+        author=author,
+        statement=statement,
+        correct_answer=True,
+        topic=topic,
+        citations_references="ref",
+        pertinence="pert",
+        embedding=_fake_get_embedding(statement),
+    )
+
+
+@pytest.mark.django_db
+def test_admin_topic_create_rename_delete(client):
+    from apps.questions.models import Topic
+
+    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234"})
+    admin = User.objects.get(email="admin@example.com")
+    _make_question(admin, "Pergunta de fisica", "Fisica")
+
+    # Adicionar: topico sem pergunta aparece no select de criacao de pergunta
+    resp = client.post(reverse("moderation:topic_create"), {"name": "Quimica"})
+    assert resp.status_code == 302
+    assert Topic.objects.filter(name="Quimica").exists()
+    resp = client.get(reverse("questions:create"))
+    assert ("Quimica", "Quimica") in resp.context["form"].fields["topic"].choices
+
+    # Adicionar duplicado (inclusive topico que so' existe em perguntas) -> erro
+    resp = client.post(reverse("moderation:topic_create"), {"name": "Fisica"})
+    assert resp.status_code == 200
+    assert "já existe" in resp.context["error"]
+
+    # Renomear: atualiza as perguntas que usam o topico
+    resp = client.post(reverse("moderation:topic_rename"), {"topic": "Fisica", "new_name": "Fisica Basica"})
+    assert resp.status_code == 302
+    assert Question.objects.get(statement="Pergunta de fisica").topic == "Fisica Basica"
+
+    # Renomear para nome existente -> recusado
+    resp = client.post(reverse("moderation:topic_rename"), {"topic": "Fisica Basica", "new_name": "Quimica"})
+    assert resp.status_code == 200
+    assert resp.context["error"]
+    assert Question.objects.get(statement="Pergunta de fisica").topic == "Fisica Basica"
+
+    # Excluir topico em uso sem destino -> recusado
+    resp = client.post(reverse("moderation:topic_delete"), {"topic": "Fisica Basica"})
+    assert resp.status_code == 200
+    assert resp.context["error"]
+
+    # Excluir movendo as perguntas para outro topico
+    resp = client.post(reverse("moderation:topic_delete"), {"topic": "Fisica Basica", "mode": "move", "reassign_to": "Quimica"})
+    assert resp.status_code == 302
+    assert Question.objects.get(statement="Pergunta de fisica").topic == "Quimica"
+    names = [t["name"] for t in client.get(reverse("moderation:topic_list")).context["topics"]]
+    assert names == ["Quimica"]
+
+    # Excluir topico sem perguntas
+    Question.objects.all().delete()
+    resp = client.post(reverse("moderation:topic_delete"), {"topic": "Quimica"})
+    assert resp.status_code == 302
+    assert not Topic.objects.exists()
+
+
+@pytest.mark.django_db
+def test_topic_management_requires_admin(client):
+    client.post(reverse("accounts:register"), {"name": "Aluno", "email": "aluno-topico@example.com", "password": "senha1234"})
+    resp = client.post(reverse("moderation:topic_create"), {"name": "Hack"})
+    assert resp.status_code in (302, 403)
+    from apps.questions.models import Topic
+
+    assert not Topic.objects.exists()
+
+
+@pytest.mark.django_db
+def test_admin_topic_delete_with_questions(client):
+    from apps.questions.models import Topic
+
+    client.post(reverse("accounts:register"), {"name": "Admin", "email": "admin@example.com", "password": "senha1234"})
+    admin = User.objects.get(email="admin@example.com")
+    _make_question(admin, "Pergunta de historia 1", "Historia")
+    _make_question(admin, "Pergunta de historia 2", "Historia")
+    _make_question(admin, "Pergunta de artes", "Artes")
+    Topic.objects.create(name="Historia")
+
+    resp = client.post(reverse("moderation:topic_delete"), {"topic": "Historia", "mode": "delete_questions"})
+    assert resp.status_code == 302
+    assert not Question.objects.filter(topic="Historia").exists()
+    assert not Topic.objects.filter(name="Historia").exists()
+    assert Question.objects.filter(topic="Artes").count() == 1
+    names = [t["name"] for t in client.get(reverse("moderation:topic_list")).context["topics"]]
+    assert names == ["Artes"]
