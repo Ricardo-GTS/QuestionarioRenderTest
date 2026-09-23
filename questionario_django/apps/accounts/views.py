@@ -107,15 +107,11 @@ def account(request):
         form = AccountForm(request.POST)
         if form.is_valid():
             new_email = form.cleaned_data["email"].strip().lower()
-            registration_number = form.cleaned_data["registration_number"]
             if new_email != user.email and User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
                 form.add_error("email", "Ja existe uma conta com esse e-mail")
-            elif _registration_number_taken(registration_number, exclude_pk=user.pk):
-                form.add_error("registration_number", REGISTRATION_NUMBER_TAKEN)
             else:
                 user.name = form.cleaned_data["name"]
                 user.email = new_email
-                user.registration_number = registration_number
                 password = form.cleaned_data.get("password")
                 if password:
                     user.set_password(password)
@@ -125,9 +121,7 @@ def account(request):
                 messages.success(request, "Conta atualizada com sucesso")
                 return redirect("accounts:account")
     else:
-        form = AccountForm(
-            initial={"name": user.name, "email": user.email, "registration_number": user.registration_number}
-        )
+        form = AccountForm(initial={"name": user.name, "email": user.email})
     return render(request, "accounts/account.html", {"form": form})
 
 
@@ -154,20 +148,6 @@ def complete_registration_number(request):
 
 
 @login_required
-def delete_account_confirm(request):
-    return render(request, "accounts/delete_account_confirm.html")
-
-
-@login_required
-@require_POST
-def delete_account(request):
-    user = request.user
-    logout(request)
-    user.delete()
-    return redirect("accounts:login")
-
-
-@login_required
 def my_stats(request):
     from apps.moderation.services import compute_user_reputation
 
@@ -183,21 +163,52 @@ def admin_user_list(request):
     reputation_map = compute_all_users_reputation()
     question_counts = dict(Question.objects.values_list("author_id").annotate(count=Count("id")))
 
-    users_data = []
-    for u in User.objects.all().order_by("name"):
-        rep = reputation_map.get(u.id, {"accepted_reports_count": 0, "rejected_reports_count": 0, "questions_removed_count": 0})
-        users_data.append(
-            {
-                "id": u.id,
-                "name": u.name,
-                "email": u.email,
-                "registration_number": u.registration_number,
-                "is_admin": u.email.strip().lower() in settings.ADMIN_EMAILS,
-                "question_count": question_counts.get(u.id, 0),
-                **rep,
-            }
-        )
+    users_data = [_admin_user_data(u, reputation_map, question_counts) for u in User.objects.all().order_by("name")]
     return render(request, "accounts/admin_users.html", {"users": users_data})
+
+
+def _admin_user_data(u, reputation_map, question_counts):
+    rep = reputation_map.get(u.id, {"accepted_reports_count": 0, "rejected_reports_count": 0, "questions_removed_count": 0})
+    return {
+        "id": u.id,
+        "name": u.name,
+        "email": u.email,
+        "registration_number": u.registration_number,
+        "is_admin": u.email.strip().lower() in settings.ADMIN_EMAILS,
+        "question_count": question_counts.get(u.id, 0),
+        **rep,
+    }
+
+
+@admin_required
+@require_POST
+def admin_update_registration_number(request, user_id):
+    """Depois de preenchida, a matricula so' e' alterada por aqui (admin)."""
+    from apps.moderation.services import compute_user_reputation
+    from apps.questions.models import Question
+
+    target = get_object_or_404(User, pk=user_id)
+    form = RegistrationNumberForm(request.POST)
+    error = None
+    if form.is_valid():
+        registration_number = form.cleaned_data["registration_number"]
+        if _registration_number_taken(registration_number, exclude_pk=target.pk):
+            error = REGISTRATION_NUMBER_TAKEN
+        else:
+            target.registration_number = registration_number
+            target.save(update_fields=["registration_number"])
+    else:
+        error = form.errors["registration_number"][0]
+    if not request.headers.get("HX-Request"):
+        if error:
+            messages.error(request, error)
+        return redirect("accounts:admin_user_list")
+    user_data = _admin_user_data(
+        target,
+        {target.id: compute_user_reputation(target.id)},
+        {target.id: Question.objects.filter(author=target).count()},
+    )
+    return render(request, "accounts/_admin_user_card.html", {"u": user_data, "error": error})
 
 
 @admin_required
@@ -206,8 +217,8 @@ def admin_delete_user(request, user_id):
     target = get_object_or_404(User, pk=user_id)
     if target.pk == request.user.pk:
         if request.headers.get("HX-Request"):
-            return HttpResponse("Use a pagina de conta para excluir a propria conta", status=400)
-        messages.error(request, "Use a pagina de conta para excluir a propria conta")
+            return HttpResponse("Nao e' possivel excluir a propria conta", status=400)
+        messages.error(request, "Nao e' possivel excluir a propria conta")
         return redirect("accounts:admin_user_list")
     target.delete()
     if request.headers.get("HX-Request"):

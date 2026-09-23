@@ -72,11 +72,57 @@ def test_user_without_registration_number_is_sent_to_complete_page(client):
 
 
 @pytest.mark.django_db
-def test_account_page_edits_registration_number(client):
+def test_user_cannot_change_own_registration_number(client):
     client.post(reverse("accounts:register"), {**REGISTER, "registration_number": "20230012345"})
     resp = client.post(
         reverse("accounts:account"),
-        {"name": "Aluno", "email": "aluno@example.com", "registration_number": "20239999999", "password": ""},
+        {"name": "Novo Nome", "email": "aluno@example.com", "registration_number": "20239999999", "password": ""},
     )
     assert resp.status_code == 302
-    assert User.objects.get(email="aluno@example.com").registration_number == "20239999999"
+    user = User.objects.get(email="aluno@example.com")
+    assert user.name == "Novo Nome"
+    assert user.registration_number == "20230012345"
+    # tela de completar nao serve pra trocar uma matricula ja preenchida
+    resp = client.post(reverse("accounts:complete_registration_number"), {"registration_number": "20239999999"})
+    assert resp.status_code == 302
+    assert User.objects.get(email="aluno@example.com").registration_number == "20230012345"
+    # e a rota de edicao do admin e' negada pra aluno
+    resp = client.post(
+        reverse("accounts:admin_update_registration_number", args=[user.id]), {"registration_number": "20239999999"}
+    )
+    assert resp.status_code in (302, 403)
+    assert User.objects.get(email="aluno@example.com").registration_number == "20230012345"
+
+
+@pytest.mark.django_db
+def test_admin_changes_registration_number(client):
+    aluno = User.objects.create_user(
+        email="aluno@example.com", name="Aluno", password="senha1234", registration_number="20230012345"
+    )
+    User.objects.create_user(email="outro@example.com", name="Outro", password="senha1234", registration_number="11112222")
+    client.post(
+        reverse("accounts:register"),
+        {"name": "Admin", "email": "admin@example.com", "password": "senha1234", "registration_number": "99998888"},
+    )
+    url = reverse("accounts:admin_update_registration_number", args=[aluno.id])
+
+    resp = client.post(url, {"registration_number": "20239999999"}, HTTP_HX_REQUEST="true")
+    assert resp.status_code == 200
+    assert resp.context["error"] is None
+    aluno.refresh_from_db()
+    assert aluno.registration_number == "20239999999"
+
+    for invalid in ("11112222", "123"):
+        resp = client.post(url, {"registration_number": invalid}, HTTP_HX_REQUEST="true")
+        assert resp.context["error"]
+        aluno.refresh_from_db()
+        assert aluno.registration_number == "20239999999"
+
+
+@pytest.mark.django_db
+def test_self_delete_account_routes_removed(client):
+    from django.urls import NoReverseMatch
+
+    for name in ("accounts:delete_account", "accounts:delete_account_confirm"):
+        with pytest.raises(NoReverseMatch):
+            reverse(name)

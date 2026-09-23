@@ -1,0 +1,28 @@
+<div class="card" id="user-{{ u.id }}">
+  <strong>{{ u.name }}</strong> ({{ u.email }})
+  {% if u.is_admin %}<span class="chip chip--accent">admin</span>{% endif %}
+  <p>
+    Perguntas criadas: {{ u.question_count }} ·
+    Reportes aceitos: {{ u.accepted_reports_count }} ·
+    Reportes rejeitados: {{ u.rejected_reports_count }} ·
+    Perguntas removidas: {{ u.questions_removed_count }}
+  </p>
+  {% if error %}<p class="chip chip--false">{{ error }}</p>{% endif %}
+  <form method="post" action="{% url 'accounts:admin_update_registration_number' u.id %}"
+        hx-post="{% url 'accounts:admin_update_registration_number' u.id %}"
+        hx-target="#user-{{ u.id }}" hx-swap="outerHTML">
+    {% csrf_token %}
+    <label>Matrícula
+      <input type="text" name="registration_number" value="{{ u.registration_number|default:'' }}"
+             inputmode="numeric" pattern="\d{8,12}" minlength="8" maxlength="12" required placeholder="não informada">
+    </label>
+    <button type="submit" class="btn">Salvar matrícula</button>
+  </form>
+  <form method="post" action="{% url 'accounts:admin_delete_user' u.id %}"
+        hx-post="{% url 'accounts:admin_delete_user' u.id %}"
+        hx-confirm="Excluir usuario {{ u.email }}?"
+        hx-target="#user-{{ u.id }}" hx-swap="outerHTML">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Excluir</button>
+  </form>
+</div>

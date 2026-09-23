@@ -16,7 +16,6 @@ def test_authenticated_pages_render(client):
 
     assert client.get(reverse("questions:create")).status_code == 200
     assert client.get(reverse("accounts:account")).status_code == 200
-    assert client.get(reverse("accounts:delete_account_confirm")).status_code == 200
     assert client.get(reverse("accounts:stats")).status_code == 200
     assert client.get(reverse("quiz:start")).status_code == 200
 

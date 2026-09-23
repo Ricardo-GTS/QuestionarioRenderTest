@@ -106,7 +106,7 @@ Quem estiver listado em `ADMIN_EMAILS` vira admin automaticamente ao logar (sem 
 - **Visao Geral** (`/admin`) — totais de usuarios/perguntas/reportes, taxa media de acerto, perguntas e reportes por categoria.
 - **Moderacao** (`/admin/moderacao`) — lista perguntas com reporte pendente (mostra resposta cadastrada e quem reportou), Aprova Remocao/Rejeita Remocao (decisao unica que resolve a pergunta e todos os reportes pendentes dela).
 - **Perguntas Removidas** (`/admin/removidas`) — lista perguntas removidas, com opcao de editar (inline, via HTMX) e reativar (volta pra `active`).
-- **Usuarios** (`/admin/usuarios`) — lista com contagem de perguntas por usuario, reputacao (reportes aceitos/rejeitados, perguntas removidas), exclusao de conta (nao permite excluir a propria conta admin por ali).
+- **Usuarios** (`/admin/usuarios`) — lista com contagem de perguntas por usuario, reputacao (reportes aceitos/rejeitados, perguntas removidas), edicao da matricula e exclusao de conta (nao permite excluir a propria conta admin por ali). O aluno nao exclui a propria conta nem altera a matricula.
 - **Configuracoes** (`/admin/configuracoes`) — edita `SIMILARITY_THRESHOLD`, `QUIZ_SIZE` e `REPORT_THRESHOLD` em runtime.
 
 ## Fora do escopo do MVP

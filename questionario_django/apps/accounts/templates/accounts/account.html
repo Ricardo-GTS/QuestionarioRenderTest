@@ -17,9 +17,9 @@
       {{ form.email.errors }}
     </p>
     <p>
-      <label for="id_registration_number">{{ form.registration_number.label }}</label>
-      {{ form.registration_number }}
-      {{ form.registration_number.errors }}
+      <label>Matrícula da Universidade</label>
+      <strong>{{ user.registration_number }}</strong>
+      <small>Para alterar a matrícula, fale com o professor (admin).</small>
     </p>
     <p>
       <label for="id_password">Nova senha</label>
@@ -29,11 +29,5 @@
     </p>
     <button type="submit" class="btn btn-primary">Salvar</button>
   </form>
-</div>
-
-<div class="card">
-  <h2>Excluir conta</h2>
-  <p>Essa acao e permanente e remove todas as perguntas e reportes criados por voce.</p>
-  <a href="{% url 'accounts:delete_account_confirm' %}" class="btn btn-danger">Excluir minha conta</a>
 </div>
 {% endblock %}

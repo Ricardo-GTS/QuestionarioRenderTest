@@ -27,7 +27,6 @@ class LoginForm(forms.Form):
 class AccountForm(forms.Form):
     name = forms.CharField(max_length=120, min_length=1)
     email = forms.EmailField(max_length=255)
-    registration_number = registration_number_field()
     password = forms.CharField(
         widget=forms.PasswordInput,
         required=False,
