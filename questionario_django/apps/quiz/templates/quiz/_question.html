@@ -1,12 +1,17 @@
 <div id="quiz-card" class="card">
 {% if no_questions %}
-  {% if topic %}
-    <p>Não há questões disponíveis no tópico <strong>{{ topic }}</strong> agora. <a href="{% url 'quiz:start' %}?novo=1">Treinar com todos os tópicos</a></p>
+  {% if topics %}
+    <p>Não há questões disponíveis {% if topics|length == 1 %}no tópico{% else %}nos tópicos{% endif %} <strong>{{ topics|join:", " }}</strong> agora. <a href="{% url 'quiz:start' %}?novo=1">Treinar com todos os tópicos</a></p>
   {% else %}
     <p>Não há questões disponíveis no momento. <a href="{% url 'questions:create' %}">Crie uma questão</a> para começar.</p>
   {% endif %}
 {% else %}
-  <p class="quiz-progress">{% if topic %}<span class="chip chip--accent">Treino: {{ topic }}</span> · {% endif %}Pergunta {{ index }} de {{ total }}</p>
+  <div class="quiz-header">
+    <p class="quiz-progress">{% if topics %}<span class="chip chip--accent" title="{{ topics|join:', ' }}">Treino: {{ topics_label }}</span> · {% endif %}Pergunta {{ index }} de {{ total }}</p>
+    <button type="button" class="btn btn-small" hx-get="{% url 'quiz:choose_topics' %}" hx-target="#quiz-topics-panel">Escolher tópicos</button>
+  </div>
+  {% if short_quiz and index == 1 %}<p class="stats-note">Só {{ total }} questõe{{ total|pluralize:"s" }} disponíve{{ total|pluralize:"l,is" }} nesses tópicos.</p>{% endif %}
+  <div id="quiz-topics-panel"></div>
   <h2>{{ question.statement }}</h2>
 
   {% if not answered %}
@@ -16,7 +21,7 @@
       <button type="submit" name="answer" value="true" class="btn-truefalse">Verdadeiro</button>
       <button type="submit" name="answer" value="false" class="btn-truefalse">Falso</button>
     </form>
-    <p class="quiz-restart"><a href="{% url 'quiz:start' %}?novo=1{% if topic %}&topico={{ topic|urlencode }}{% endif %}">Recomeçar treino</a></p>
+    <p class="quiz-restart"><a href="{% url 'quiz:start' %}?novo=1{% if topics_query %}&{{ topics_query }}{% endif %}">Recomeçar treino</a></p>
   {% else %}
     <div class="quiz-feedback">
       <span class="chip {% if is_correct %}chip--true{% else %}chip--false{% endif %}">

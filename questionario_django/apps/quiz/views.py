@@ -13,9 +13,18 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from .services import current_position, pick_random_questions, quiz_expired, record_attempt, score_quiz
+from .services import (
+    available_topic_counts,
+    clean_topics,
+    current_position,
+    pick_random_questions,
+    quiz_expired,
+    record_attempt,
+    score_quiz,
+)
 
-SESSION_KEYS = ("quiz_question_ids", "quiz_answers", "quiz_position", "quiz_started_at", "quiz_topic")
+# quiz_topic (texto, um topico so') e' o formato antigo -- lido por _session_topics.
+SESSION_KEYS = ("quiz_question_ids", "quiz_answers", "quiz_position", "quiz_started_at", "quiz_topics", "quiz_topic")
 
 
 def question_answered_in_quiz(request, question_id: int) -> bool:
@@ -23,17 +32,27 @@ def question_answered_in_quiz(request, question_id: int) -> bool:
     return str(question_id) in request.session.get("quiz_answers", {})
 
 
-def _requested_topic(request):
-    """?topico= so' vale se for um topico que existe (senao, quiz normal)."""
+def _requested_topics(request) -> list[str]:
+    """?topico=A&topico=B ("Recomecar", "Treinar este topico"): so' valem topicos que
+    existem no semestre (os que existem mas estao sem questao dao a mensagem de vazio)."""
     from apps.questions.services import list_topic_names
 
-    topic = (request.GET.get("topico") or "").strip()
-    return topic if topic and topic in list_topic_names() else None
+    return clean_topics(request.GET.getlist("topico"), list_topic_names())
 
 
-def _new_quiz(request, topic=None):
-    questions = pick_random_questions(exclude_author_id=request.user.id, topic=topic)
-    request.session["quiz_topic"] = topic
+def _session_topics(request) -> list[str]:
+    topics = request.session.get("quiz_topics")
+    if topics is None:  # sessao de antes da escolha de varios topicos
+        old = request.session.get("quiz_topic")
+        topics = [old] if old else []
+    return topics
+
+
+def _new_quiz(request, topics=None):
+    topics = list(topics or [])
+    questions = pick_random_questions(exclude_author_id=request.user.id, topics=topics)
+    request.session.pop("quiz_topic", None)
+    request.session["quiz_topics"] = topics
     request.session["quiz_question_ids"] = [q.id for q in questions]
     request.session["quiz_answers"] = {}
     request.session["quiz_position"] = 0
@@ -71,11 +90,26 @@ def _current_question(request):
     return None
 
 
+def _topics_context(request) -> dict:
+    """Rotulo "Treino: A, B" (ou "3 topicos"), querystring do Recomecar e aviso de treino curto."""
+    from django.utils.http import urlencode
+
+    from apps.core.services import get_effective_settings
+
+    topics = _session_topics(request)
+    total = len(request.session.get("quiz_question_ids", []))
+    return {
+        "topics": topics,
+        "topics_label": ", ".join(topics) if len(topics) <= 2 else f"{len(topics)} tópicos",
+        "topics_query": urlencode([("topico", t) for t in topics]),
+        "short_quiz": bool(topics) and 0 < total < get_effective_settings().quiz_size,
+    }
+
+
 def _card_context(request):
     ids = request.session.get("quiz_question_ids", [])
-    topic = request.session.get("quiz_topic")
     if not ids:
-        return {"no_questions": True, "topic": topic}
+        return {"no_questions": True, **_topics_context(request)}
     question = _current_question(request)
     if question is None:
         return {"finished": True}
@@ -83,7 +117,7 @@ def _card_context(request):
     given = answers.get(str(question.id))
     context = {
         "question": question,
-        "topic": topic,
+        **_topics_context(request),
         "index": _position(request) + 1,
         "total": len(request.session["quiz_question_ids"]),
         "answered": given is not None,
@@ -119,7 +153,7 @@ def _posted_question_id(request):
 @login_required
 def start(request):
     if request.GET.get("novo") or not _quiz_in_progress(request):
-        _new_quiz(request, topic=_requested_topic(request))
+        _new_quiz(request, topics=_requested_topics(request))
     context = _card_context(request)
     if context.get("finished"):
         return redirect("quiz:result")
@@ -183,3 +217,41 @@ def result(request):
         request.session.pop(key, None)
 
     return render(request, "quiz/result.html", {"result": result_data})
+
+
+@login_required
+def choose_topics(request):
+    """"Escolher topicos" dentro do card: GET mostra os topicos com questoes disponiveis
+    pro aluno (os do treino atual ja' marcados); POST comeca um treino so' com eles.
+    Nada marcado/valido: mensagem, e o treino atual continua como esta."""
+    counts = available_topic_counts(request.user.id)
+    error = None
+    selected = _session_topics(request)
+    if request.method == "POST":
+        if request.POST.get("todos"):
+            _new_quiz(request, topics=[])
+            return _redirect_to_quiz(request)
+        chosen = clean_topics(request.POST.getlist("topico"), [topic for topic, _ in counts])
+        if chosen:
+            _new_quiz(request, topics=chosen)
+            return _redirect_to_quiz(request)
+        error = "Marque pelo menos um tópico, ou clique em Todos os tópicos."
+        selected = request.POST.getlist("topico")
+    return render(
+        request,
+        "quiz/_topic_picker.html",
+        {
+            "counts": counts,
+            "selected": set(selected),
+            "error": error,
+            "has_answers": bool(request.session.get("quiz_answers")),
+        },
+    )
+
+
+def _redirect_to_quiz(request):
+    if request.headers.get("HX-Request"):
+        response = HttpResponse()
+        response["HX-Redirect"] = reverse("quiz:start")
+        return response
+    return redirect("quiz:start")

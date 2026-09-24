@@ -97,7 +97,7 @@ Alem do login por e-mail/senha, ha um botao "Entrar com Google" nas paginas de l
 
 ## Quiz de treino e comentarios
 
-Na pagina **Treinar** (menu; URL `/quiz`), o aluno responde e ve na hora se acertou, a resposta correta e as referencias da questao; so' avanca quando clica em **Proxima**. Depois de responder aparecem **Comentarios** (le e escreve, dentro do proprio card) e **Reportar**. Depois do treino, a aba **Minhas interacoes** lista as questoes em que ele comentou (com selo de comentarios novos) e os reportes que ele fez. Alunos podem reportar comentarios; o admin decide na aba **Comentarios reportados**.
+Na pagina **Treinar** (menu; URL `/quiz`) o treino comeca direto com todos os topicos; pelo botao **Escolher topicos** o aluno pode treinar so' os topicos que marcar. Ele responde e ve na hora se acertou, a resposta correta e as referencias da questao; so' avanca quando clica em **Proxima**. Depois de responder aparecem **Comentarios** (le e escreve, dentro do proprio card) e **Reportar**. Depois do treino, a aba **Minhas interacoes** lista as questoes em que ele comentou (com selo de comentarios novos) e os reportes que ele fez. Alunos podem reportar comentarios; o admin decide na aba **Comentarios reportados**.
 
 ## Semestres
 

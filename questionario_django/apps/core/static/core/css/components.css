@@ -172,3 +172,8 @@
 .range-form { display: flex; flex-wrap: wrap; gap: 0.75em; align-items: center; }
 .rename-form { display: inline-flex; gap: 0.3em; align-items: center; }
 .rename-form input { width: 6em; }
+
+/* Treinar: escolher topicos */
+.quiz-header { display: flex; justify-content: space-between; align-items: center; gap: 0.5em; flex-wrap: wrap; }
+.topic-checklist { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.35em 1em; margin: 0.5em 0 0.9em; }
+.topic-checklist label { display: flex; gap: 0.4em; align-items: baseline; font-weight: 400; }

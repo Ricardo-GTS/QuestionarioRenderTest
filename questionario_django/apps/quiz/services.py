@@ -5,15 +5,40 @@ from apps.core.services import get_effective_settings
 from .models import QuizAttempt
 
 
-def pick_random_questions(exclude_author_id, size=None, topic=None):
-    """topic: treino so' de um topico ("Treinar este topico" na pagina de Estatisticas)."""
+def _available_questions(user_id):
+    """Questoes que o aluno pode receber no treino: ativas e de outros autores."""
     from apps.questions.models import Question, QuestionStatus
 
+    return Question.objects.filter(status=QuestionStatus.ACTIVE).exclude(author_id=user_id)
+
+
+def pick_random_questions(exclude_author_id, size=None, topics=None):
+    """topics: treino so' desses topicos ("Escolher topicos" / "Treinar este topico")."""
     n = size or get_effective_settings().quiz_size
-    queryset = Question.objects.filter(status=QuestionStatus.ACTIVE).exclude(author_id=exclude_author_id)
-    if topic:
-        queryset = queryset.filter(topic=topic)
+    queryset = _available_questions(exclude_author_id)
+    if topics:
+        queryset = queryset.filter(topic__in=topics)
     return list(queryset.order_by("?")[:n])
+
+
+def available_topic_counts(user_id) -> list[tuple[str, int]]:
+    """[(topico, questoes disponiveis pro aluno)], so' topicos com 1+ questao, em ordem."""
+    from django.db.models import Count
+
+    rows = _available_questions(user_id).values("topic").annotate(n=Count("id"))
+    return sorted(((row["topic"], row["n"]) for row in rows), key=lambda item: item[0].casefold())
+
+
+def clean_topics(requested, available) -> list[str]:
+    """Pura. Mantem a ordem pedida, tira duplicados e o que nao esta em `available`."""
+    allowed = set(available)
+    seen, result = set(), []
+    for topic in requested:
+        topic = (topic or "").strip()
+        if topic in allowed and topic not in seen:
+            seen.add(topic)
+            result.append(topic)
+    return result
 
 
 def score_quiz(questions, answers: dict[int, bool]) -> dict:

@@ -187,3 +187,103 @@ def test_question_deleted_mid_quiz_is_skipped(client, quiz):
     assert resp.status_code == 200
     assert resp.context["question"].id == ids[1]
     assert resp.context["total"] == 2
+
+
+# --- escolher topicos ---
+
+from apps.quiz.services import clean_topics  # noqa: E402
+
+
+def test_clean_topics():
+    assert clean_topics(["B", "A", "B", " A ", "X", ""], ["A", "B", "C"]) == ["B", "A"]
+    assert clean_topics([], ["A"]) == []
+
+
+@pytest.fixture
+def topics_setup(client):
+    """Aluno logado; questoes de outro autor em 3 topicos + 1 propria (fica fora)."""
+    from apps.core.services import get_effective_settings
+
+    semester = get_effective_settings()
+    semester.quiz_size = 10
+    semester.save()
+    author = User.objects.create_user(email="autor@example.com", name="Autor", password="x" * 8, registration_number="11110000")
+    student = User.objects.create_user(email="aluno@example.com", name="Aluno", password="x" * 8, registration_number="22220000")
+    for topic, n in (("Alfa", 3), ("Beta", 2), ("Gama", 4)):
+        for i in range(n):
+            q = _question(author, f"{topic} {i}")
+            Question.objects.filter(pk=q.pk).update(topic=topic)
+    own = _question(student, "Minha propria")
+    Question.objects.filter(pk=own.pk).update(topic="Delta")
+    client.force_login(student)
+    client.get(reverse("quiz:start"))  # comeca direto, como hoje
+    return student
+
+
+def _topics_of_quiz(client):
+    return set(Question.objects.filter(pk__in=client.session["quiz_question_ids"]).values_list("topic", flat=True))
+
+
+@pytest.mark.django_db
+def test_start_is_direct_and_picker_lists_available_topics(client, topics_setup):
+    assert len(client.session["quiz_question_ids"]) == 9  # todos os topicos, sem escolher nada
+    html = client.get(reverse("quiz:start")).content.decode()
+    assert "Escolher tópicos" in html
+    resp = client.get(reverse("quiz:choose_topics"))
+    assert resp.context["counts"] == [("Alfa", 3), ("Beta", 2), ("Gama", 4)]  # Delta (propria) fora
+    assert "Alfa" in resp.content.decode() and "Delta" not in resp.content.decode()
+
+
+@pytest.mark.django_db
+def test_train_selected_topics(client, topics_setup):
+    resp = client.post(reverse("quiz:choose_topics"), {"topico": ["Alfa", "Beta"]}, HTTP_HX_REQUEST="true")
+    assert resp["HX-Redirect"] == reverse("quiz:start")
+    assert client.session["quiz_topics"] == ["Alfa", "Beta"]
+    assert _topics_of_quiz(client) == {"Alfa", "Beta"}
+    page = client.get(reverse("quiz:start"))
+    html = page.content.decode()
+    assert "Treino: Alfa, Beta" in html
+    assert "Só 5 questões disponíveis nesses tópicos" in html  # 3 + 2 < QUIZ_SIZE (10)
+    assert "topico=Alfa&amp;topico=Beta" in html  # Recomecar mantem os dois
+    # picker ja' vem com os atuais marcados
+    assert client.get(reverse("quiz:choose_topics")).context["selected"] == {"Alfa", "Beta"}
+    # recomecar pelo link mantem os topicos
+    client.get(reverse("quiz:start") + "?novo=1&topico=Alfa&topico=Beta")
+    assert _topics_of_quiz(client) == {"Alfa", "Beta"}
+
+
+@pytest.mark.django_db
+def test_many_topics_label(client, topics_setup):
+    client.post(reverse("quiz:choose_topics"), {"topico": ["Alfa", "Beta", "Gama"]})
+    assert "Treino: 3 tópicos" in client.get(reverse("quiz:start")).content.decode()
+
+
+@pytest.mark.django_db
+def test_nothing_or_only_invalid_selected_keeps_current_quiz(client, topics_setup):
+    ids_before = client.session["quiz_question_ids"]
+    client.post(reverse("quiz:answer"), {"answer": "true", "question_id": ids_before[0]})
+    answers_before = dict(client.session["quiz_answers"])
+    for data in ({}, {"topico": ["Delta", "Inexistente"]}):
+        resp = client.post(reverse("quiz:choose_topics"), data)
+        assert resp.context["error"].startswith("Marque pelo menos um tópico")
+    assert client.session["quiz_question_ids"] == ids_before
+    assert client.session["quiz_answers"] == answers_before
+    assert "recomeça do início" in client.get(reverse("quiz:choose_topics")).content.decode()
+
+
+@pytest.mark.django_db
+def test_all_topics_button_goes_back_to_normal(client, topics_setup):
+    client.post(reverse("quiz:choose_topics"), {"topico": ["Beta"]})
+    assert _topics_of_quiz(client) == {"Beta"}
+    client.post(reverse("quiz:choose_topics"), {"todos": "1"})
+    assert client.session["quiz_topics"] == []
+    assert len(client.session["quiz_question_ids"]) == 9
+
+
+@pytest.mark.django_db
+def test_old_session_with_single_quiz_topic(client, topics_setup):
+    session = client.session
+    session.pop("quiz_topics", None)
+    session["quiz_topic"] = "Gama"  # formato antigo
+    session.save()
+    assert "Treino: Gama" in client.get(reverse("quiz:start")).content.decode()

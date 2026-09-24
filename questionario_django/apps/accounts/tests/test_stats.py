@@ -234,7 +234,7 @@ def test_unknown_topic_falls_back_and_empty_topic_message(client, student):
     _question(author, "Geo", topic="Geografia")
     _question(student, "So' minha", topic="Solitario")
     client.get(reverse("quiz:start") + "?novo=1&topico=NaoExiste")
-    assert client.session["quiz_topic"] is None
+    assert client.session["quiz_topics"] == []
     assert len(client.session["quiz_question_ids"]) == 1
 
     resp = client.get(reverse("quiz:start") + "?novo=1&topico=Solitario")
