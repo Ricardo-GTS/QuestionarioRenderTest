@@ -18,6 +18,11 @@ class Command(BaseCommand):
         parser.add_argument("--wait", type=float, default=5.0, help="Segundos entre tentativas.")
 
     def handle(self, *args, **options):
+        from django.conf import settings
+
+        if settings.EMBEDDINGS_DISABLED:
+            self.stdout.write("warm_ollama: embeddings desligados (EMBEDDINGS_DISABLED), nada a carregar.")
+            return
         for attempt in range(1, options["attempts"] + 1):
             started = time.time()
             try:

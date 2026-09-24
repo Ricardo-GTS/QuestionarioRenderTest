@@ -28,6 +28,15 @@ DEBUG = env_bool("DJANGO_DEBUG", True)
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
+# Atras de um proxy HTTPS (Render): o Django precisa saber que a requisicao original era
+# https, senao o CSRF compara a Origin "https://..." com "http://..." e recusa todo POST.
+# So' ligar com um proxy de verdade na frente (o cliente poderia forjar o header).
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+if env_bool("DJANGO_BEHIND_HTTPS_PROXY"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
 # --- Semestres: um schema do Postgres por semestre (django-tenants) ---
 # SHARED_APPS ficam no schema "public" (contas, sessoes, cache, lista de semestres).
 # TENANT_APPS tem uma copia das tabelas em CADA schema de semestre (s2026_1, s2026_2...):
@@ -175,6 +184,9 @@ ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").sp
 # --- Ollama (embeddings) ---
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+# Build de teste (Render gratuito, 512 MB: o bge-m3 nao cabe). Sem Ollama: embedding
+# falso por hash e SEM checagem de questao parecida -- toda questao e' aceita.
+EMBEDDINGS_DISABLED = env_bool("EMBEDDINGS_DISABLED")
 
 # --- Google login (opcional/aditivo) ---
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")

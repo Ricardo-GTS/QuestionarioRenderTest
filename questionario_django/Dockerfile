@@ -33,4 +33,4 @@ USER app
 # rate limit e' o DatabaseCache (compartilhado entre workers; createcachetable cria a
 # tabela). warm_ollama roda em background pra carregar o modelo de embedding sem
 # atrasar a subida do gunicorn.
-CMD ["sh", "-c", "python manage.py migrate && python manage.py createcachetable && (python manage.py warm_ollama &) && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-4} --timeout ${GUNICORN_TIMEOUT:-60}"]
+CMD ["sh", "-c", "python manage.py migrate && python manage.py createcachetable && (python manage.py warm_ollama &) && gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers ${GUNICORN_WORKERS:-4} --timeout ${GUNICORN_TIMEOUT:-60}"]

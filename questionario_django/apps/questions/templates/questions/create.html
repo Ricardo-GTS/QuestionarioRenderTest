@@ -5,5 +5,8 @@
   <h1>Criar questão</h1>
   <p>Escreva uma afirmação sobre o conteúdo e diga se ela é verdadeira ou falsa. Antes de salvar, o sistema confere se já existe uma questão parecida.</p>
 </div>
+{% if embeddings_disabled %}
+<div class="notice notice--warning"><p><strong>Modo de teste:</strong> questões parecidas não são verificadas. Toda questão é salva.</p></div>
+{% endif %}
 {% include "questions/_form.html" %}
 {% endblock %}

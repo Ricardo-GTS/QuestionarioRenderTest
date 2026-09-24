@@ -22,13 +22,16 @@ def health(request):
     except Exception:
         checks["database"] = "error"
 
-    try:
-        response = httpx.get(settings.OLLAMA_HOST, timeout=5.0)
-        checks["ollama"] = "ok" if response.status_code < 500 else "degraded"
-    except Exception:
-        checks["ollama"] = "error"
+    if settings.EMBEDDINGS_DISABLED:
+        checks["ollama"] = "disabled"
+    else:
+        try:
+            response = httpx.get(settings.OLLAMA_HOST, timeout=5.0)
+            checks["ollama"] = "ok" if response.status_code < 500 else "degraded"
+        except Exception:
+            checks["ollama"] = "error"
 
-    status = "ok" if all(v == "ok" for v in checks.values()) else "degraded"
+    status = "ok" if all(v in ("ok", "disabled") for v in checks.values()) else "degraded"
     return JsonResponse({"status": status, "checks": checks})
 
 

@@ -2,6 +2,20 @@
 
 Sistema web de apoio a educacao onde alunos criam e respondem perguntas de Verdadeiro/Falso, com deduplicacao semantica via embeddings (Ollama + pgvector) e moderacao automatica por reportes.
 
+
+## Teste no Render (este repositorio)
+
+Este e' o **build de teste** (branch `render-test` do projeto original), feito para o plano gratuito do Render. Diferencas para o sistema real:
+- **Sem Ollama** (`EMBEDDINGS_DISABLED=true`): o plano gratuito tem 512 MB e o modelo `bge-m3` ocupa 1,25 GB. Toda questao e' aceita, **sem checagem de questoes parecidas**; a tela de criar questao avisa isso.
+- **Sem SMTP**: o Render gratuito bloqueia as portas de e-mail. O codigo de confirmacao aparece nos **Logs** do servico (procure por "Seu código").
+
+Como subir:
+1. No Render: **New > Blueprint**, escolha este repositorio. O `render.yaml` cria o Postgres e o servico web.
+2. Informe `ADMIN_EMAILS` (o seu e-mail) quando o Render pedir.
+3. Abra a URL `https://<servico>.onrender.com`, cadastre-se com esse e-mail, copie o codigo dos Logs e, ja' logado, abra o primeiro semestre em **Admin > Semestres**.
+
+Limitacoes do plano gratuito: o servico dorme depois de 15 min sem acesso (a primeira visita demora cerca de 1 min), o Postgres gratuito expira em 30 dias e as planilhas de backup se perdem a cada deploy.
+
 ## Stack
 
 - **Backend + Frontend:** Django (monolito) — Templates server-side + HTMX para trocas parciais de tela (sem SPA, sem Django REST Framework)

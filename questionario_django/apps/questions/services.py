@@ -19,7 +19,23 @@ class EmbeddingServiceError(Exception):
     pass
 
 
+def _hash_embedding(text: str) -> list[float]:
+    """Modo EMBEDDINGS_DISABLED: vetor deterministico por hash do texto, normalizado
+    (vetor valido para a coluna e o indice HNSW, sem NaN do vetor zero)."""
+    import hashlib
+    import math
+
+    from .models import EMBEDDING_DIM
+
+    digest = hashlib.sha256(text.encode("utf-8")).digest()
+    values = [(digest[i % len(digest)] + i) % 256 - 127.5 for i in range(EMBEDDING_DIM)]
+    norm = math.sqrt(sum(v * v for v in values)) or 1.0
+    return [v / norm for v in values]
+
+
 def get_embedding(text: str) -> list[float]:
+    if settings.EMBEDDINGS_DISABLED:
+        return _hash_embedding(text)
     try:
         response = httpx.post(
             f"{settings.OLLAMA_HOST}/api/embeddings",
@@ -54,6 +70,8 @@ def filter_by_threshold(rows, threshold: float) -> list[SimilarQuestion]:
 
 
 def find_similar_active_questions(embedding, limit: int = 5) -> list[SimilarQuestion]:
+    if settings.EMBEDDINGS_DISABLED:
+        return []  # build de teste: aceita qualquer questao
     threshold = get_effective_settings().similarity_threshold
     queryset = (
         Question.objects.filter(status=QuestionStatus.ACTIVE)

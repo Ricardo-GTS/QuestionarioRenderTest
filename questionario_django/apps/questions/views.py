@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
@@ -47,6 +48,7 @@ def create_question(request):
         "success_message": success_message,
         "error_message": error_message,
         "new_topic_choice": NEW_TOPIC_CHOICE,
+        "embeddings_disabled": settings.EMBEDDINGS_DISABLED,
     }
     if request.headers.get("HX-Request"):
         return render(request, "questions/_form.html", context)
