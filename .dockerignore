@@ -1,0 +1,12 @@
+.git
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.env
+**/.env.*
+!**/.env.example
+questionario_django/staticfiles/
+questionario_django/analise/
+planilhas/
+backups/
