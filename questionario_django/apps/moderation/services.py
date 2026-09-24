@@ -139,6 +139,9 @@ def rename_topic(old_name: str, new_name: str) -> None:
             f"movendo as perguntas para '{new_name}'."
         )
     Question.objects.filter(topic=old_name).update(topic=new_name)
+    from apps.questions.sheets import schedule_sheet_update
+
+    schedule_sheet_update()  # .update() nao dispara o signal da planilha
     Topic.objects.filter(name=old_name).delete()
     Topic.objects.create(name=new_name)
 
@@ -165,6 +168,9 @@ def delete_topic(name: str, *, reassign_to: str | None = None, delete_questions:
         if reassign_to == name or reassign_to not in names:
             raise TopicError("Escolha um tópico de destino válido e diferente do excluído.")
         questions.update(topic=reassign_to)
+        from apps.questions.sheets import schedule_sheet_update
+
+        schedule_sheet_update()  # .update() nao dispara o signal da planilha
     Topic.objects.filter(name=name).delete()
 
 def compute_average_score_percent(attempts) -> float | None:

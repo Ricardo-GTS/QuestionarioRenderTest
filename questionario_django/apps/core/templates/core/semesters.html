@@ -17,7 +17,12 @@
           <td>{{ row.questions }}</td>
           <td>{{ row.semester.opened_at|date:"d/m/Y" }}</td>
           <td>{{ row.semester.closed_at|date:"d/m/Y"|default:"—" }}</td>
-          <td>
+          <td class="semester-actions">
+            <a class="btn btn-small" href="{% url 'core:download_sheet' row.semester.id %}">Baixar planilha</a>
+            <form method="post" action="{% url 'core:regenerate_sheet' row.semester.id %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-small">Regenerar planilha</button>
+            </form>
             {% if not row.semester.is_active %}
               <form method="post" action="{% url 'core:reactivate_semester' row.semester.id %}"
                     onsubmit="return confirm('Voltar o semestre {{ row.semester.name }} a ser o ativo? O ativo de agora será encerrado.');">
@@ -32,6 +37,21 @@
       {% endfor %}
     </tbody>
   </table>
+</div>
+
+<div class="card">
+  <h2>Gerar planilha por período</h2>
+  {% if available %}
+    <p>Questões disponíveis de <strong>{{ available.0|date:"d/m/Y" }}</strong> a <strong>{{ available.1|date:"d/m/Y" }}</strong> (todos os semestres). A planilha inclui a coluna "Semestre".</p>
+    <form method="post" action="{% url 'core:export_range' %}" class="range-form">
+      {% csrf_token %}
+      <label>De <input type="date" name="start" value="{{ range_values.start }}" min="{{ available.0|date:'Y-m-d' }}" max="{{ available.1|date:'Y-m-d' }}" required></label>
+      <label>até <input type="date" name="end" value="{{ range_values.end }}" min="{{ available.0|date:'Y-m-d' }}" max="{{ available.1|date:'Y-m-d' }}" required></label>
+      <button type="submit" class="btn btn-primary">Baixar planilha</button>
+    </form>
+  {% else %}
+    <p>Ainda não há questões para exportar.</p>
+  {% endif %}
 </div>
 
 <div class="card">

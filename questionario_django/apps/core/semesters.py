@@ -35,6 +35,21 @@ def active_semester():
     return Semester.objects.filter(is_active=True).first()
 
 
+def connection_semester():
+    """O Semester do schema em uso na conexao, ou None (schema public).
+    Cuidado: dentro de schema_context() o django-tenants poe na conexao um FakeTenant
+    (so' o nome do schema), nao o Semester -- entao nao basta olhar connection.tenant."""
+    from .models import Semester
+
+    tenant = getattr(connection, "tenant", None)
+    if isinstance(tenant, Semester):
+        return tenant
+    schema = getattr(connection, "schema_name", None)
+    if not schema or schema == "public":
+        return None
+    return Semester.objects.filter(schema_name=schema).first()
+
+
 def pick_semester(request):
     from .models import Semester
     from .permissions import is_admin_email

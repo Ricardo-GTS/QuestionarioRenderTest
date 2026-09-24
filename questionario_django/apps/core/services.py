@@ -1,18 +1,13 @@
-from django.db import connection
-
-from .models import AppSettings, Semester
+from .models import AppSettings
 
 
 def get_effective_settings():
     """Configuracoes de negocio do semestre da requisicao (o schema ativo na conexao).
     Mesmos nomes de campo do antigo AppSettings, entao quem chama nao muda. Sem semestre
     nenhum (instalacao nova), devolve os valores iniciais de AppSettings."""
-    tenant = getattr(connection, "tenant", None)
-    if isinstance(tenant, Semester):
-        return tenant
-    from .semesters import active_semester
+    from .semesters import active_semester, connection_semester
 
-    return active_semester() or AppSettings.get_solo()
+    return connection_semester() or active_semester() or AppSettings.get_solo()
 
 
 def update_settings(*, similarity_threshold=None, quiz_size=None, report_threshold=None):

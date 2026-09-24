@@ -58,6 +58,10 @@ services:
     build: ./questionario_django
     restart: unless-stopped
     env_file: .env
+    volumes:
+      # Planilhas de backup das questoes (uma por semestre): ficam no servidor, fora do
+      # container, pra nao sumirem ao recriar a imagem. Tem e-mails de alunos -> fora do git.
+      - ./planilhas:/app/planilhas
     environment:
       DJANGO_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:

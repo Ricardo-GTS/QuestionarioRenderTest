@@ -1,3 +1,5 @@
+from datetime import date
+
 import httpx
 from django.conf import settings
 from django.contrib import messages
@@ -55,10 +57,13 @@ def _semesters_overview():
 
 
 @admin_required
-def semesters(request, error=None):
+def semesters(request, error=None, range_values=None):
+    from apps.questions.sheets import available_range
+
     from .semesters import active_semester, suggest_next_name
 
     active = active_semester()
+    available = available_range()
     return render(
         request,
         "core/semesters.html",
@@ -67,6 +72,9 @@ def semesters(request, error=None):
             "active": active,
             "suggested_name": suggest_next_name(active.name) if active else "",
             "error": error,
+            "available": available,
+            "range_values": range_values
+            or ({"start": available[0].isoformat(), "end": available[1].isoformat()} if available else {}),
         },
     )
 
@@ -119,3 +127,59 @@ def select_semester(request):
     if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
         next_url = "moderation:dashboard"
     return redirect(next_url)
+
+
+# --- Planilhas de backup das questoes ---
+
+
+@admin_required
+def download_sheet(request, semester_id):
+    from django.http import FileResponse
+
+    from apps.questions.sheets import sheet_filename, sheet_path, write_sheet
+
+    from .models import Semester
+
+    semester = get_object_or_404(Semester, pk=semester_id)
+    path = sheet_path(semester)
+    if not path.exists():
+        write_sheet(semester)  # primeira vez: gera na hora
+    return FileResponse(open(path, "rb"), as_attachment=True, filename=sheet_filename(semester.name))
+
+
+@admin_required
+@require_POST
+def regenerate_sheet(request, semester_id):
+    from apps.questions.sheets import write_sheet
+
+    from .models import Semester
+
+    semester = get_object_or_404(Semester, pk=semester_id)
+    write_sheet(semester)
+    messages.success(request, f"Planilha do semestre {semester.name} regenerada a partir do banco.")
+    return redirect("core:semesters")
+
+
+@admin_required
+@require_POST
+def export_range(request):
+    """Planilha de um periodo (todos os semestres), gerada na hora e so' baixada."""
+    from io import BytesIO
+
+    from apps.questions.sheets import available_range, build_range_workbook, parse_range, range_filename
+
+    start, end = request.POST.get("start", ""), request.POST.get("end", "")
+    interval, error = parse_range(start, end, available_range())
+    if error:
+        return semesters(request, error=error, range_values={"start": start, "end": end})
+    workbook, count = build_range_workbook(*interval)
+    if count == 0:
+        return semesters(request, error="Nenhuma questão nesse período.", range_values={"start": start, "end": end})
+    buffer = BytesIO()
+    workbook.save(buffer)
+    response = HttpResponse(
+        buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    first_day, last_day = date.fromisoformat(start), date.fromisoformat(end)
+    response["Content-Disposition"] = f'attachment; filename="{range_filename(first_day, last_day)}"'
+    return response

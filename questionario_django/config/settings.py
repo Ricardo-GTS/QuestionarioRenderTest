@@ -191,6 +191,11 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "Questionario <nao-responda@localhost>")
+# Planilha de backup das questoes (uma por semestre, formato do Google Forms original).
+# Em Docker, a pasta e' um volume (./planilhas no servidor) -- senao sumiria ao recriar o container.
+QUESTION_SHEETS_DIR = os.environ.get("QUESTION_SHEETS_DIR", str(BASE_DIR / "planilhas"))
+QUESTION_SHEETS_ASYNC = env_bool("QUESTION_SHEETS_ASYNC", True)
+
 # Envia os e-mails numa thread em background (a tela nao espera o SMTP, ~2 s no Gmail).
 # Os testes desligam (conftest) pra ler mail.outbox na hora.
 EMAIL_SEND_ASYNC = env_bool("EMAIL_SEND_ASYNC", True)

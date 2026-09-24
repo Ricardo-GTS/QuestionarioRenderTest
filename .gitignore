@@ -59,3 +59,6 @@ questionario_django/analise/
 
 # Backups do banco (scripts/backup_*.sh)
 backups/
+
+# Planilhas de backup das questoes (tem e-mails de alunos)
+planilhas/

@@ -122,6 +122,14 @@ docker compose run --rm django sh -c "python manage.py criar_primeiro_semestre 2
 docker compose up -d django
 ```
 
+## Planilha de backup das questoes
+
+Cada semestre tem uma planilha no mesmo formato das respostas do Google Forms original (aba "Form Responses 1", colunas Timestamp, Email Address, Nome Completo, Topico da questao, Questao, Resposta, Citacoes e referencias, Pertinencia) mais a coluna **Situacao** (Ativa, Em analise, Removida). Ela fica em `planilhas/Banco_de_Questoes_<semestre>.xlsx` no servidor (volume do Docker, fora do git -- tem os e-mails dos alunos) e e' regenerada a partir do banco sempre que uma questao e' criada, editada, removida ou reativada, ou um topico muda. Semestre novo = arquivo novo.
+
+- **Admin -> Semestres:** "Baixar planilha" e "Regenerar planilha" em cada semestre, e **"Gerar planilha por periodo"**, que mostra o intervalo de datas disponivel (somando todos os semestres) e baixa uma planilha so' daquele periodo, com a coluna Semestre.
+- **Terminal:** `docker compose exec django python manage.py gerar_planilha --semestre 2026.1` (ou sem `--semestre` para todos).
+- O container do Django roda como usuario comum (UID 1000, nao root), entao os arquivos em `planilhas/` ficam com o seu usuario como dono no servidor. Se o seu UID nao for 1000 (`id -u`), construa com `docker compose build --build-arg APP_UID=$(id -u) --build-arg APP_GID=$(id -g) django`.
+
 ## Estatisticas
 
 A pagina Estatisticas mostra ao aluno: questoes respondidas, taxa de acerto (com a media anonima da turma), questionarios concluidos, dias seguidos estudando, evolucao semanal do acerto, melhores tópicos e tópicos para reforcar (com o botao **Treinar este topico**, que monta um questionario so' daquele topico), cobertura do banco de questoes, as estatisticas das questoes que ele criou e sua participacao (comentarios e precisao dos reportes). As respostas passaram a ser registradas em 24/09/2026.

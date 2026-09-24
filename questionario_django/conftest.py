@@ -54,11 +54,14 @@ def _active_semester_schema(request):
 
 
 @pytest.fixture(autouse=True)
-def _admin_emails(settings):
+def _admin_emails(settings, tmp_path_factory):
     settings.ADMIN_EMAILS = {"admin@example.com"}
     settings.RATELIMIT_ENABLE = False
     # E-mail sincrono nos testes (o background/thread tem teste proprio).
     settings.EMAIL_SEND_ASYNC = False
+    # Planilhas de backup numa pasta temporaria, gravadas na hora (sem thread).
+    settings.QUESTION_SHEETS_DIR = str(tmp_path_factory.mktemp("planilhas"))
+    settings.QUESTION_SHEETS_ASYNC = False
 
 
 def _fake_get_embedding(text: str) -> list[float]:
