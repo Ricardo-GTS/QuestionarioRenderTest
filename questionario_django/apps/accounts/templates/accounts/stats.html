@@ -16,7 +16,7 @@
     {% if s.class_percent is not None %}<p class="stat-sub">média da turma {{ s.class_percent }}%</p>{% endif %}
   </div>
   <div class="stat-tile">
-    <p class="stat-label">Questionários concluídos</p>
+    <p class="stat-label">Treinos concluídos</p>
     <p class="stat-value">{{ s.quizzes_completed }}</p>
   </div>
   <div class="stat-tile">
@@ -33,7 +33,7 @@
 
 <h2>Meu desempenho</h2>
 {% if not stats.summary.answered %}
-  <div class="card"><p>Faça um <a href="{% url 'quiz:start' %}">questionário</a> para ver seu desempenho aqui.</p></div>
+  <div class="card"><p><a href="{% url 'quiz:start' %}">Treine</a> um pouco para ver seu desempenho aqui.</p></div>
 {% else %}
   {% with chart=stats.weekly %}
   <div class="card">
@@ -95,11 +95,11 @@
 {% endif %}
 
 <div class="card">
-  <h3>Últimos questionários concluídos</h3>
+  <h3>Últimos treinos concluídos</h3>
   {% for attempt in stats.recent_attempts %}
     <p>{{ attempt.created_at|date:"d/m/Y H:i" }} · <strong>{{ attempt.score }}/{{ attempt.total }}</strong>{% if attempt.percent is not None %} ({{ attempt.percent }}%){% endif %}</p>
   {% empty %}
-    <p>Nenhum questionário concluído ainda. <a href="{% url 'quiz:start' %}">Fazer um questionário</a></p>
+    <p>Nenhum treino concluído ainda. <a href="{% url 'quiz:start' %}">Treinar</a></p>
   {% endfor %}
 </div>
 

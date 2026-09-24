@@ -87,7 +87,7 @@ def test_lists_only_own_questions_and_filters(author_client):
 
     assert [q.statement for q in _page(client, situacao="em-analise").context["page"]] == ["Minha em analise"]
     html = _page(client, situacao="em-analise").content.decode()
-    assert "Em análise" in html and "fora do questionário" in html
+    assert "Em análise" in html and "fora do treino" in html
     # filtro invalido cai em "todas"
     assert _page(client, situacao="xyz").context["situacao"] == "todas"
 

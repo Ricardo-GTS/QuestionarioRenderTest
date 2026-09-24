@@ -14,7 +14,7 @@
     <p><strong>{{ question.statement }}</strong></p>
     <p>
       {% if question.status == "active" %}<span class="chip chip--true">Ativa</span>
-      {% elif question.status == "reported" %}<span class="chip chip--accent">Em análise</span> <small>fora do questionário até o professor decidir</small>
+      {% elif question.status == "reported" %}<span class="chip chip--accent">Em análise</span> <small>fora do treino até o professor decidir</small>
       {% else %}<span class="chip chip--false">Removida</span>{% endif %}
       · Resposta: <strong>{% if question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}</strong>
       · Tópico: {{ question.topic }} · Criada em {{ question.created_at|date:"d/m/Y" }}
