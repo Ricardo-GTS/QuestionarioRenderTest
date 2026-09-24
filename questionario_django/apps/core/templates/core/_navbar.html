@@ -4,7 +4,7 @@
   </div>
   <div>
     {% if user.is_authenticated %}
-      <a href="{% url 'questions:create' %}" class="{% if request.path == '/' %}active{% endif %}">Criar Pergunta</a>
+      <a href="{% url 'questions:create' %}" class="{% if request.path == '/' %}active{% endif %}">Criar Questão</a>
       <a href="{% url 'quiz:start' %}">Fazer Questionario</a>
       <a href="{% url 'questions:mine' %}">Minhas Questões{% if my_questions_new_comments %} <span class="chip chip--accent nav-badge">{{ my_questions_new_comments }}</span>{% endif %}</a>
       <a href="{% url 'accounts:interactions' %}">Minhas Interações</a>

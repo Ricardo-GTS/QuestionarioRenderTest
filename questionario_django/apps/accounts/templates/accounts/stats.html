@@ -106,7 +106,7 @@
 <h2>Minhas questões</h2>
 {% with a=stats.author %}
 {% if not stats.summary.questions_created %}
-  <div class="card"><p>Você ainda não criou questões. <a href="{% url 'questions:create' %}">Criar Pergunta</a></p></div>
+  <div class="card"><p>Você ainda não criou questões. <a href="{% url 'questions:create' %}">Criar Questão</a></p></div>
 {% else %}
   <div class="card">
     <p>{{ a.active }} ativa{{ a.active|pluralize }} · {{ a.reported }} em análise · {{ a.removed }} removida{{ a.removed|pluralize }} · <a href="{% url 'questions:mine' %}">Ver Minhas Questões</a></p>

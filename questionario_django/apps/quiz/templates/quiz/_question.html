@@ -3,7 +3,7 @@
   {% if topic %}
     <p>Não há questões disponíveis no tópico <strong>{{ topic }}</strong> agora. <a href="{% url 'quiz:start' %}?novo=1">Fazer o questionário normal</a></p>
   {% else %}
-    <p>Nao ha perguntas disponiveis no momento. <a href="{% url 'questions:create' %}">Crie uma pergunta</a> para comecar.</p>
+    <p>Não há questões disponíveis no momento. <a href="{% url 'questions:create' %}">Crie uma questão</a> para começar.</p>
   {% endif %}
 {% else %}
   <p class="quiz-progress">{% if topic %}<span class="chip chip--accent">Treino: {{ topic }}</span> · {% endif %}Pergunta {{ index }} de {{ total }}</p>
