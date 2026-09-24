@@ -148,3 +148,45 @@ def reactivate(semester) -> None:
         is_active=False, closed_at=timezone.now()
     )
     Semester.objects.filter(pk=semester.pk).update(is_active=True, closed_at=None)
+
+
+def rename_semester(semester, new_name: str):
+    """Renomeia o semestre nos 4 lugares onde o nome aparece, juntos: Semester.name, o
+    schema do Postgres (s2026_1 -> s2025_2, que o backup_semestre.sh deriva do nome), o
+    Domain ficticio do django-tenants e o arquivo da planilha. Banco numa transacao so'
+    (DDL no Postgres e' transacional); a planilha e' renomeada depois do commit."""
+    from django_tenants.utils import schema_exists
+
+    from .models import Domain, Semester
+
+    new_name = (new_name or "").strip()
+    old_name, old_schema = semester.name, semester.schema_name
+    if not NAME_RE.match(new_name):
+        raise SemesterError("Use o formato ANO.1 ou ANO.2 (ex: 2025.2).")
+    if new_name == old_name:
+        raise SemesterError("O nome novo é igual ao atual.")
+    if Semester.objects.filter(name=new_name).exclude(pk=semester.pk).exists():
+        raise SemesterError(f"O semestre {new_name} já existe.")
+    new_schema = schema_name_for(new_name)
+    if schema_exists(new_schema):
+        raise SemesterError(f"Já existe um schema {new_schema} no banco.")
+
+    connection.set_schema_to_public()  # a conexao podia estar no schema que vai mudar de nome
+    with transaction.atomic():
+        with connection.cursor() as cursor:
+            cursor.execute(f'ALTER SCHEMA "{old_schema}" RENAME TO "{new_schema}"')
+        # .update() e nao save(): o TenantMixin.save() tentaria criar/validar o schema.
+        Semester.objects.filter(pk=semester.pk).update(name=new_name, schema_name=new_schema)
+        Domain.objects.filter(tenant_id=semester.pk).update(domain=f"{new_schema}.semestre.local")
+        semester_id = semester.pk
+        transaction.on_commit(lambda: _rename_sheet_after_commit(old_name, semester_id))
+    semester.name, semester.schema_name = new_name, new_schema
+    return semester
+
+
+def _rename_sheet_after_commit(old_name: str, semester_id: int) -> None:
+    from apps.questions.sheets import rename_sheet_file
+
+    from .models import Semester
+
+    rename_sheet_file(old_name, Semester.objects.get(pk=semester_id))

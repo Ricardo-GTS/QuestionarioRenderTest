@@ -183,3 +183,19 @@ def export_range(request):
     first_day, last_day = date.fromisoformat(start), date.fromisoformat(end)
     response["Content-Disposition"] = f'attachment; filename="{range_filename(first_day, last_day)}"'
     return response
+
+
+@admin_required
+@require_POST
+def rename_semester_view(request, semester_id):
+    from .models import Semester
+    from .semesters import SemesterError, rename_semester
+
+    semester = get_object_or_404(Semester, pk=semester_id)
+    old_name = semester.name
+    try:
+        rename_semester(semester, request.POST.get("name", ""))
+    except SemesterError as exc:
+        return semesters(request, error=str(exc))
+    messages.success(request, f"Semestre {old_name} renomeado para {semester.name}.")
+    return redirect("core:semesters")

@@ -228,3 +228,26 @@ def build_range_workbook(start_dt, end_dt):
                 collected.append((question.created_at, question.id, question_row(question) + [semester.name]))
     collected.sort(key=lambda item: (item[0], item[1]))
     return build_workbook([row for _, _, row in collected], COLUMNS + ["Semestre"]), len(collected)
+
+
+def rename_sheet_file(old_name: str, semester) -> None:
+    """Depois de renomear o semestre: o arquivo (e a trava) do nome antigo passam a ter o
+    nome novo, e a planilha e' regenerada (o banco confirma o conteudo). Se o antigo nao
+    existir, so' gera. Nunca deixa a falha subir -- o semestre ja' foi renomeado."""
+    directory = Path(settings.QUESTION_SHEETS_DIR)
+    old_path = directory / sheet_filename(old_name)
+    new_path = sheet_path(semester)
+    try:
+        if old_path.exists():
+            directory.mkdir(parents=True, exist_ok=True)
+            with open(new_path.with_name(f".{new_path.name}.lock"), "w") as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX)
+                os.replace(old_path, new_path)
+            old_lock = old_path.with_name(f".{old_path.name}.lock")
+            if old_lock.exists():
+                old_lock.unlink()
+    except OSError:
+        logger.exception("Falha ao renomear a planilha %s para %s", old_path.name, new_path.name)
+    # Na hora, sem thread: renomear e' raro, e pelo comando (manage.py renomear_semestre) o
+    # processo termina antes de uma thread em segundo plano rodar.
+    _write_safely(semester.pk)

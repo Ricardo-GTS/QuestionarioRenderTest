@@ -170,3 +170,5 @@
 .backup-reminder pre { margin: 0.3em 0; }
 .semester-actions { display: flex; flex-wrap: wrap; gap: 0.3em; }
 .range-form { display: flex; flex-wrap: wrap; gap: 0.75em; align-items: center; }
+.rename-form { display: inline-flex; gap: 0.3em; align-items: center; }
+.rename-form input { width: 6em; }

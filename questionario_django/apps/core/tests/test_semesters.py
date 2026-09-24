@@ -188,3 +188,77 @@ def test_no_active_semester_page(client):
     assert resp.status_code == 503
     assert "Nenhum semestre aberto" in resp.content.decode()
     assert client.get(reverse("accounts:account")).status_code == 200  # conta funciona sem semestre
+
+
+# --- renomear semestre ---
+
+
+@pytest.mark.django_db
+def test_rename_semester_changes_all_four_places(client, old_data, django_capture_on_commit_callbacks):
+    from apps.core.models import Domain
+    from apps.core.semesters import rename_semester
+    from apps.questions import sheets
+
+    semester = Semester.objects.get(is_active=True)
+    with django_capture_on_commit_callbacks(execute=True):
+        sheets.write_sheet(semester)
+    old_file = sheets.sheet_path(semester)
+    assert old_file.name == "Banco_de_Questoes_2026.1.xlsx" and old_file.exists()
+
+    with django_capture_on_commit_callbacks(execute=True):
+        rename_semester(semester, "2025.2")
+    semester.refresh_from_db()
+    assert (semester.name, semester.schema_name, semester.is_active) == ("2025.2", "s2025_2", True)
+    assert schema_exists("s2025_2") and not schema_exists("s2026_1")
+    assert Domain.objects.get(tenant=semester).domain == "s2025_2.semestre.local"
+    with schema_context("s2025_2"):
+        assert Question.objects.count() == 1  # dados intactos no schema novo
+    assert Enrollment.objects.filter(user=old_data["student"], semester=semester).exists()
+    new_file = sheets.sheet_path(semester)
+    assert new_file.name == "Banco_de_Questoes_2025.2.xlsx" and new_file.exists() and not old_file.exists()
+    assert suggest_next_name(semester.name) == "2026.1"
+
+    # o sistema continua funcionando com o nome novo
+    client.force_login(old_data["student"])
+    assert client.get(reverse("quiz:start")).status_code == 200
+    assert client.get(reverse("questions:mine")).status_code == 200
+
+
+@pytest.mark.django_db
+def test_rename_refuses_bad_or_taken_names(old_data):
+    from apps.core.semesters import rename_semester
+
+    semester = Semester.objects.get(is_active=True)
+    for bad in ("2025", "segundo", "2026.1"):  # formato invalido e nome igual ao atual
+        with pytest.raises(SemesterError):
+            rename_semester(semester, bad)
+    _open("2026.2")
+    semester.refresh_from_db()
+    with pytest.raises(SemesterError):
+        rename_semester(semester, "2026.2")  # ja' existe
+    assert Semester.objects.filter(name="2026.1").exists()
+
+
+@pytest.mark.django_db
+def test_rename_view_and_command(client, old_data):
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    semester = Semester.objects.get(is_active=True)
+    client.force_login(old_data["student"])
+    assert client.post(reverse("core:rename_semester", args=[semester.id]), {"name": "2025.2"}).status_code == 403
+
+    out = StringIO()
+    call_command("renomear_semestre", "2026.1", "2025.2", dry_run=True, stdout=out)
+    assert "s2026_1 -> s2025_2" in out.getvalue()
+    assert Semester.objects.get(pk=semester.pk).name == "2026.1"  # dry-run nao muda
+
+    _admin_client(client)
+    resp = client.post(reverse("core:rename_semester", args=[semester.id]), {"name": "x"})
+    assert "formato" in resp.context["error"]
+    resp = client.post(reverse("core:rename_semester", args=[semester.id]), {"name": "2025.2"})
+    assert resp.status_code == 302
+    assert Semester.objects.get(pk=semester.pk).name == "2025.2"
+    call_command("renomear_semestre", "2025.2", "2026.1", stdout=StringIO())
+    assert Semester.objects.get(pk=semester.pk).schema_name == "s2026_1"

@@ -112,6 +112,8 @@ scripts/backup_semestre.sh 2026.1        # so' um semestre (o schema dele)
 
 Para restaurar: `docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d <banco> --clean' < backups/<arquivo>.dump` (de preferencia num banco novo, para consultar sem mexer no atual).
 
+**Renomear um semestre** (ex: criado com o nome errado): botao **Renomear** na pagina Semestres, ou `docker compose exec django python manage.py renomear_semestre 2026.1 2025.2 [--dry-run]`. Nome, schema do banco e planilha mudam juntos; questoes, alunos e estatisticas continuam. Backups feitos antes continuam com o nome antigo (restaurar um deles traz o semestre com o nome de antes).
+
 **Migracao de uma instalacao antiga** (antes dos semestres, com tudo no schema public) -- uma vez so':
 
 ```bash

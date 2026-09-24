@@ -18,6 +18,12 @@
           <td>{{ row.semester.opened_at|date:"d/m/Y" }}</td>
           <td>{{ row.semester.closed_at|date:"d/m/Y"|default:"—" }}</td>
           <td class="semester-actions">
+            <form method="post" action="{% url 'core:rename_semester' row.semester.id %}" class="rename-form"
+                  onsubmit="return confirm('Renomear o semestre {{ row.semester.name }} para ' + this.name.value + '? Questões, alunos e estatísticas continuam os mesmos.');">
+              {% csrf_token %}
+              <input type="text" name="name" value="{{ row.semester.name }}" pattern="\d{4}\.[12]" size="7" required aria-label="Novo nome do semestre {{ row.semester.name }}">
+              <button type="submit" class="btn btn-small">Renomear</button>
+            </form>
             <a class="btn btn-small" href="{% url 'core:download_sheet' row.semester.id %}">Baixar planilha</a>
             <form method="post" action="{% url 'core:regenerate_sheet' row.semester.id %}">
               {% csrf_token %}
