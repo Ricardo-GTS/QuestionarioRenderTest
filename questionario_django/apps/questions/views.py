@@ -53,7 +53,10 @@ def create_question(request):
     return render(request, "questions/create.html", context)
 
 
-# --- Comentarios (painel dentro do card da questao: quiz e Minhas interacoes) ---
+MY_QUESTIONS_PER_PAGE = 20
+
+
+# --- Comentarios (painel dentro do card da questao: quiz, Minhas interacoes e Minhas Questoes) ---
 
 
 def _comments_panel_context(request, question, form=None):
@@ -70,6 +73,7 @@ def _comments_panel_context(request, question, form=None):
         "comments": comments,
         "reported_ids": reported_ids,
         "is_admin": is_admin_email(request.user.email),
+        "comments_open": services.comments_open(question),
         "form": form or CommentForm(),
     }
 
@@ -83,7 +87,9 @@ def comments_panel(request, question_id):
     form = None
     if request.method == "POST":
         form = CommentForm(request.POST)
-        if form.is_valid():
+        if not services.comments_open(question):
+            form.add_error(None, "Questão removida — comentários só para leitura.")
+        elif form.is_valid():
             QuestionComment.objects.create(question=question, author=request.user, text=form.cleaned_data["text"])
             form = None
     services.mark_seen(request.user, question)
@@ -135,4 +141,27 @@ def report_comment(request, comment_id):
         request,
         "questions/_comment_report_form.html",
         {"comment": comment, "form": form, "error": error, "sent": sent, "cancelled": bool(request.GET.get("cancelar"))},
+    )
+
+
+@login_required
+def my_questions(request):
+    """Pagina "Minhas Questoes": o autor acompanha as proprias questoes (situacao,
+    estatistica de acerto, motivos dos reportes sem o nome de quem reportou, comentarios)."""
+    from django.core.paginator import Paginator
+
+    situacao = request.GET.get("situacao", "todas")
+    if situacao not in services.MY_QUESTIONS_FILTERS:
+        situacao = "todas"
+    questions = services.own_questions_for(request.user, services.MY_QUESTIONS_FILTERS.get(situacao))
+    page = Paginator(questions, MY_QUESTIONS_PER_PAGE).get_page(request.GET.get("pagina"))
+    for question in page:
+        question.accuracy = services.accuracy_label(question.answer_count, question.correct_count)
+        question.report_count = question.pending_reports + question.accepted_reports + question.rejected_reports
+    counts = services.own_questions_status_counts(request.user)
+    labels = (("todas", "Todas"), ("ativas", "Ativas"), ("em-analise", "Em análise"), ("removidas", "Removidas"))
+    return render(
+        request,
+        "questions/my_questions.html",
+        {"page": page, "situacao": situacao, "filters": [(key, label, counts[key]) for key, label in labels]},
     )

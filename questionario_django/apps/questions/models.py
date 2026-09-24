@@ -102,3 +102,17 @@ class CommentSeen(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["user", "question"], name="uq_comment_seen_user_question"),
         ]
+
+
+class QuestionAnswer(models.Model):
+    """Uma resposta dada no quiz (a primeira daquela questao naquele quiz) -- base da
+    estatistica de acerto que o autor ve em "Minhas Questoes". user SET_NULL: excluir a
+    conta de quem respondeu nao apaga o historico da questao."""
+
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="answers")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="answers")
+    is_correct = models.BooleanField()
+    answered_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["question"], name="ix_answer_question")]

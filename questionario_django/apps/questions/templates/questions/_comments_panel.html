@@ -6,7 +6,7 @@
 
   {% for comment in comments %}
     <div class="comment" id="comment-{{ comment.id }}">
-      <p class="comment-meta"><strong>{{ comment.author.name }}</strong> · {{ comment.created_at|date:"d/m/Y H:i" }}</p>
+      <p class="comment-meta"><strong>{{ comment.author.name }}</strong>{% if comment.author_id == question.author_id %} <span class="chip chip--accent chip-author">Autor da questão</span>{% endif %} · {{ comment.created_at|date:"d/m/Y H:i" }}</p>
       <p class="comment-text">{{ comment.text|linebreaksbr }}</p>
       <div class="comment-actions">
         {% if comment.author_id == user.id %}
@@ -35,6 +35,10 @@
     <p>Ninguém comentou ainda. Seja o primeiro!</p>
   {% endfor %}
 
+  {% if not comments_open %}
+    {{ form.non_field_errors }}
+    <p class="chip chip--neutral">Questão removida — comentários só para leitura.</p>
+  {% else %}
   <form hx-post="{% url 'questions:comments_panel' question.id %}" hx-target="#comments-{{ question.id }}" hx-swap="outerHTML">
     {% csrf_token %}
     {{ form.non_field_errors }}
@@ -45,4 +49,5 @@
     </p>
     <button type="submit" class="btn btn-primary">Enviar comentário</button>
   </form>
+  {% endif %}
 </div>

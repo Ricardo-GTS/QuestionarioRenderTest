@@ -99,6 +99,10 @@ Alem do login por e-mail/senha, ha um botao "Entrar com Google" nas paginas de l
 
 No questionario, o aluno responde e ve na hora se acertou, a resposta correta e as referencias da questao; so' avanca quando clica em **Proxima**. Depois de responder aparecem **Comentarios** (le e escreve, dentro do proprio card) e **Reportar**. Depois do quiz, a aba **Minhas interacoes** lista as questoes em que ele comentou (com selo de comentarios novos) e os reportes que ele fez. Alunos podem reportar comentarios; o admin decide na aba **Comentarios reportados**.
 
+## Minhas Questoes
+
+Pagina onde o aluno acompanha as questoes que criou: situacao (ativa, em analise ou removida), quantas vezes cada uma foi respondida e a taxa de acerto (a partir de 5 respostas), os motivos dos reportes (sem o nome de quem reportou) e os comentarios, que ele le e responde ali mesmo. O menu mostra "Minhas Questoes (N)" quando chegam comentarios novos. Questao removida fica com os comentarios so' para leitura.
+
 ## Moderacao
 
 Cada reporte em uma pergunta e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva). Um usuario so pode reportar a mesma pergunta uma vez. O aluno sempre escreve o motivo do reporte (campo de texto obrigatorio, sem lista de tipos); o mesmo vale para reportar um comentario.

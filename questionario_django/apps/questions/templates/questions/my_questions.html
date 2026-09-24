@@ -1,0 +1,55 @@
+{% extends "core/base.html" %}
+{% block title %}Minhas Questões - Questionario{% endblock %}
+{% block content %}
+<h1>Minhas Questões</h1>
+
+<nav class="filter-tabs">
+  {% for key, label, count in filters %}
+    <a href="?situacao={{ key }}" class="btn btn-small{% if key == situacao %} btn-primary{% endif %}">{{ label }} ({{ count }})</a>
+  {% endfor %}
+</nav>
+
+{% for question in page %}
+  <div class="card" id="mine-{{ question.id }}">
+    <p><strong>{{ question.statement }}</strong></p>
+    <p>
+      {% if question.status == "active" %}<span class="chip chip--true">Ativa</span>
+      {% elif question.status == "reported" %}<span class="chip chip--accent">Em análise</span> <small>fora do questionário até o professor decidir</small>
+      {% else %}<span class="chip chip--false">Removida</span>{% endif %}
+      · Resposta: <strong>{% if question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}</strong>
+      · Tópico: {{ question.topic }} · Criada em {{ question.created_at|date:"d/m/Y" }}
+    </p>
+    <p class="quiz-references">{{ question.accuracy }}</p>
+
+    {% if question.report_count %}
+      <details class="report-reasons">
+        <summary>{{ question.report_count }} reporte{{ question.report_count|pluralize }}{% if question.pending_reports %} ({{ question.pending_reports }} pendente{{ question.pending_reports|pluralize }}){% endif %}</summary>
+        {% for report in question.author_reports %}
+          <p>“{{ report.reason }}” · {{ report.created_at|date:"d/m/Y" }}
+            · <span class="chip chip--{% if report.status == 'accepted' %}true{% elif report.status == 'rejected' %}false{% else %}neutral{% endif %}">{% if report.status == 'accepted' %}Aceito{% elif report.status == 'rejected' %}Rejeitado{% else %}Pendente{% endif %}</span></p>
+        {% endfor %}
+      </details>
+    {% endif %}
+
+    <button type="button" class="btn" hx-get="{% url 'questions:comments_panel' question.id %}" hx-target="#mine-panel-{{ question.id }}"
+            hx-on::after-request="var b=this.querySelector('.badge-new'); if(b) b.remove();">
+      Comentários ({{ question.comment_count }}){% if question.new_count %} <span class="chip chip--accent badge-new">{{ question.new_count }} novo{{ question.new_count|pluralize }}</span>{% endif %}
+    </button>
+    <div id="mine-panel-{{ question.id }}"></div>
+  </div>
+{% empty %}
+  {% if situacao == "todas" %}
+    <p>Você ainda não criou nenhuma questão. <a href="{% url 'questions:create' %}">Criar Pergunta</a></p>
+  {% else %}
+    <p>Nenhuma questão nessa situação.</p>
+  {% endif %}
+{% endfor %}
+
+{% if page.has_other_pages %}
+  <nav class="pagination">
+    {% if page.has_previous %}<a class="btn btn-small" href="?situacao={{ situacao }}&pagina={{ page.previous_page_number }}">Anterior</a>{% endif %}
+    <span>Página {{ page.number }} de {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn btn-small" href="?situacao={{ situacao }}&pagina={{ page.next_page_number }}">Próxima</a>{% endif %}
+  </nav>
+{% endif %}
+{% endblock %}

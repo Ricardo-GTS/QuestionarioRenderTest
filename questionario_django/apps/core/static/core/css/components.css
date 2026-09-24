@@ -129,3 +129,10 @@
 .comment-report { margin-top: 0.4em; }
 .btn-small { padding: 0.25em 0.6em; font-size: 0.85em; }
 .qpanel textarea { width: 100%; }
+
+/* Minhas Questoes */
+.filter-tabs, .pagination { display: flex; flex-wrap: wrap; gap: 0.5em; align-items: center; margin-bottom: 1em; }
+.report-reasons { margin: 0.5em 0; }
+.report-reasons summary { cursor: pointer; font-weight: 600; }
+.chip-author { font-size: 0.75em; }
+.nav-badge { font-size: 0.75em; padding: 0 0.45em; }

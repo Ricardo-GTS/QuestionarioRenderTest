@@ -11,7 +11,17 @@ from apps.core import ratelimits
 
 
 @pytest.fixture
-def ratelimit_on(settings):
+def ratelimit_on(settings, monkeypatch):
+    """Liga o rate limit e congela o relogio dele: a janela do django-ratelimit e' fixa
+    (blocos de 60 s), e um teste com centenas de requests podia cruzar a virada da
+    janela e zerar o contador no meio (teste instavel)."""
+    import time as real_time
+    from types import SimpleNamespace
+
+    import django_ratelimit.core
+
+    frozen = real_time.time()
+    monkeypatch.setattr(django_ratelimit.core, "time", SimpleNamespace(time=lambda: frozen))
     settings.RATELIMIT_ENABLE = True
     cache.clear()
     yield

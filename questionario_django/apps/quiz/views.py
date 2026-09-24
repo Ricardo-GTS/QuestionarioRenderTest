@@ -127,8 +127,13 @@ def answer_question(request):
     # So' grava se for a pergunta que esta na tela e ainda sem resposta (nao da pra
     # responder de novo depois de ver a correta).
     if _posted_question_id(request) == question.id and str(question.id) not in answers:
-        answers[str(question.id)] = request.POST.get("answer") == "true"
+        from apps.questions.models import QuestionAnswer
+
+        given = request.POST.get("answer") == "true"
+        answers[str(question.id)] = given
         request.session["quiz_answers"] = answers
+        # Estatistica de acerto do autor ("Minhas Questoes"): uma vez por questao por quiz.
+        QuestionAnswer.objects.create(question=question, user=request.user, is_correct=given == question.correct_answer)
     return _render_card(request)
 
 

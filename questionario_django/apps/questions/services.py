@@ -74,11 +74,28 @@ def list_topic_names() -> list[str]:
 # --- Comentarios ---
 
 
-def can_view_comments(*, is_admin: bool, answered_in_quiz: bool, has_own_visible_comment: bool) -> bool:
-    """Pura. Quem ve (e comenta/reporta) os comentarios de uma questao: admin, quem ja'
-    respondeu a questao no quiz atual, ou quem ja' comentou nela (depois do quiz o
-    aluno so' volta a ver as questoes em que comentou -- aba Minhas interacoes)."""
-    return is_admin or answered_in_quiz or has_own_visible_comment
+def can_view_comments(
+    *, is_admin: bool, answered_in_quiz: bool, has_own_visible_comment: bool, is_author: bool = False
+) -> bool:
+    """Pura. Quem ve (e comenta/reporta) os comentarios de uma questao: admin, o autor da
+    questao (pagina Minhas Questoes), quem ja' respondeu a questao no quiz atual, ou quem
+    ja' comentou nela (depois do quiz o aluno so' volta as questoes em que comentou)."""
+    return is_admin or is_author or answered_in_quiz or has_own_visible_comment
+
+
+def comments_open(question) -> bool:
+    """Pura. Questao removida pelo professor: comentarios so' leitura."""
+    return question.status != QuestionStatus.REMOVED
+
+
+def accuracy_label(answer_count: int, correct_count: int) -> str:
+    """Pura. Com menos de MIN_ANSWERS_FOR_ACCURACY respostas a porcentagem nao diz nada."""
+    if answer_count == 0:
+        return "Ainda não foi respondida"
+    times = "1 vez" if answer_count == 1 else f"{answer_count} vezes"
+    if answer_count < MIN_ANSWERS_FOR_ACCURACY:
+        return f"Respondida {times} (acerto aparece a partir de {MIN_ANSWERS_FOR_ACCURACY} respostas)"
+    return f"Respondida {times} · {round(100 * correct_count / answer_count)}% de acerto"
 
 
 def user_can_view_comments(request, question) -> bool:
@@ -89,6 +106,7 @@ def user_can_view_comments(request, question) -> bool:
         is_admin=is_admin_email(request.user.email),
         answered_in_quiz=question_answered_in_quiz(request, question.id),
         has_own_visible_comment=question.comments.filter(author=request.user, removed=False).exists(),
+        is_author=question.author_id == request.user.id,
     )
 
 
@@ -105,9 +123,9 @@ def mark_seen(user, question) -> None:
 
 
 def commented_questions_for(user):
-    """Questoes em que o usuario tem comentario visivel, com total de comentarios,
-    ultima atividade e quantos comentarios de OUTROS chegaram desde a ultima visita
-    (selo "N novos") -- tudo anotado numa query so'."""
+    """Questoes (de OUTROS autores -- as proprias ficam em Minhas Questoes) em que o
+    usuario tem comentario visivel, com total de comentarios, ultima atividade e quantos
+    comentarios de OUTROS chegaram desde a ultima visita (selo "N novos") -- numa query so'."""
     from django.db.models import Count, Exists, F, Max, OuterRef, Q, Subquery
 
     from .models import CommentSeen, QuestionComment
@@ -119,6 +137,7 @@ def commented_questions_for(user):
         Question.objects.filter(
             Exists(QuestionComment.objects.filter(question=OuterRef("pk"), author=user, removed=False))
         )
+        .exclude(author=user)
         .annotate(
             seen_at=Subquery(seen_at),
             comment_count=Count("comments", filter=visible, distinct=True),
@@ -169,4 +188,95 @@ def resolve_comment_report(comment, *, remove: bool) -> None:
         comment.save(update_fields=["removed"])
     comment.reports.filter(status=CommentReportStatus.PENDING).update(
         status=CommentReportStatus.ACCEPTED if remove else CommentReportStatus.REJECTED
+    )
+
+
+# --- Minhas Questoes (autor acompanha as proprias questoes) ---
+
+MIN_ANSWERS_FOR_ACCURACY = 5
+MY_QUESTIONS_FILTERS = {
+    "ativas": QuestionStatus.ACTIVE,
+    "em-analise": QuestionStatus.REPORTED,
+    "removidas": QuestionStatus.REMOVED,
+}
+
+
+def _count(queryset):
+    """Subquery de contagem por questao (queryset ja' filtrado por question=OuterRef("pk")).
+    Subquery, nao JOIN: juntar comentarios x reportes x respostas multiplicaria as linhas."""
+    from django.db.models import Count, IntegerField, Subquery
+    from django.db.models.functions import Coalesce
+
+    counted = queryset.order_by().values("question").annotate(c=Count("pk")).values("c")[:1]
+    return Coalesce(Subquery(counted, output_field=IntegerField()), 0)
+
+
+def own_questions_for(user, status=None):
+    """Questoes do autor, com todas as contagens anotadas (comentarios, novos de outros
+    desde a ultima visita, reportes por situacao, respostas e acertos) e os motivos dos
+    reportes num prefetch so' -- sem o reporter (anonimato de quem reportou)."""
+    from datetime import datetime
+    from datetime import timezone as dt_timezone
+
+    from django.db.models import OuterRef, Prefetch, Subquery, Value
+    from django.db.models.functions import Coalesce
+
+    from apps.moderation.models import Report, ReportStatus
+
+    from .models import CommentSeen, QuestionAnswer, QuestionComment
+
+    never = Value(datetime(1970, 1, 1, tzinfo=dt_timezone.utc))
+    seen_at = CommentSeen.objects.filter(user=user, question=OuterRef("pk")).values("last_seen_at")[:1]
+    comments = QuestionComment.objects.filter(question=OuterRef("pk"), removed=False)
+    reports = Report.objects.filter(question=OuterRef("pk"))
+    answers = QuestionAnswer.objects.filter(question=OuterRef("pk"))
+
+    queryset = Question.objects.filter(author=user)
+    if status is not None:
+        queryset = queryset.filter(status=status)
+    return (
+        queryset.annotate(seen_at=Coalesce(Subquery(seen_at), never))
+        .annotate(
+            comment_count=_count(comments),
+            new_count=_count(comments.exclude(author=user).filter(created_at__gt=OuterRef("seen_at"))),
+            pending_reports=_count(reports.filter(status=ReportStatus.PENDING)),
+            accepted_reports=_count(reports.filter(status=ReportStatus.ACCEPTED)),
+            rejected_reports=_count(reports.filter(status=ReportStatus.REJECTED)),
+            answer_count=_count(answers),
+            correct_count=_count(answers.filter(is_correct=True)),
+        )
+        .prefetch_related(
+            Prefetch(
+                "reports",
+                queryset=Report.objects.only("id", "question_id", "reason", "status", "created_at").order_by(
+                    "-created_at"
+                ),
+                to_attr="author_reports",
+            )
+        )
+        .order_by("-created_at", "-id")
+    )
+
+
+def own_questions_status_counts(user) -> dict:
+    from django.db.models import Count
+
+    counts = {row["status"]: row["c"] for row in Question.objects.filter(author=user).values("status").annotate(c=Count("id"))}
+    return {"todas": sum(counts.values()), **{key: counts.get(status, 0) for key, status in MY_QUESTIONS_FILTERS.items()}}
+
+
+def new_comments_on_own_questions(user) -> int:
+    """Selo do menu: comentarios de OUTROS nas questoes do usuario, depois da ultima vez
+    que ele abriu cada uma. Uma query so'."""
+    from django.db.models import F, OuterRef, Q, Subquery
+
+    from .models import CommentSeen, QuestionComment
+
+    seen_at = CommentSeen.objects.filter(user=user, question=OuterRef("question")).values("last_seen_at")[:1]
+    return (
+        QuestionComment.objects.filter(question__author=user, removed=False)
+        .exclude(author=user)
+        .annotate(seen_at=Subquery(seen_at))
+        .filter(Q(seen_at__isnull=True) | Q(created_at__gt=F("seen_at")))
+        .count()
     )
