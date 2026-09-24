@@ -1,8 +1,12 @@
 <div id="quiz-card" class="card">
 {% if no_questions %}
-  <p>Nao ha perguntas disponiveis no momento. <a href="{% url 'questions:create' %}">Crie uma pergunta</a> para comecar.</p>
+  {% if topic %}
+    <p>Não há questões disponíveis no tópico <strong>{{ topic }}</strong> agora. <a href="{% url 'quiz:start' %}?novo=1">Fazer o questionário normal</a></p>
+  {% else %}
+    <p>Nao ha perguntas disponiveis no momento. <a href="{% url 'questions:create' %}">Crie uma pergunta</a> para comecar.</p>
+  {% endif %}
 {% else %}
-  <p class="quiz-progress">Pergunta {{ index }} de {{ total }}</p>
+  <p class="quiz-progress">{% if topic %}<span class="chip chip--accent">Treino: {{ topic }}</span> · {% endif %}Pergunta {{ index }} de {{ total }}</p>
   <h2>{{ question.statement }}</h2>
 
   {% if not answered %}
@@ -12,7 +16,7 @@
       <button type="submit" name="answer" value="true" class="btn-truefalse">Verdadeiro</button>
       <button type="submit" name="answer" value="false" class="btn-truefalse">Falso</button>
     </form>
-    <p class="quiz-restart"><a href="{% url 'quiz:start' %}?novo=1">Recomeçar questionário</a></p>
+    <p class="quiz-restart"><a href="{% url 'quiz:start' %}?novo=1{% if topic %}&topico={{ topic|urlencode }}{% endif %}">Recomeçar questionário</a></p>
   {% else %}
     <div class="quiz-feedback">
       <span class="chip {% if is_correct %}chip--true{% else %}chip--false{% endif %}">

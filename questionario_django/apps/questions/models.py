@@ -115,4 +115,7 @@ class QuestionAnswer(models.Model):
     answered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        indexes = [models.Index(fields=["question"], name="ix_answer_question")]
+        indexes = [
+            models.Index(fields=["question"], name="ix_answer_question"),
+            models.Index(fields=["user", "answered_at"], name="ix_answer_user_time"),
+        ]

@@ -13,8 +13,8 @@ from apps.core import ratelimits
 @pytest.fixture
 def ratelimit_on(settings, monkeypatch):
     """Liga o rate limit e congela o relogio dele: a janela do django-ratelimit e' fixa
-    (blocos de 60 s), e um teste com centenas de requests podia cruzar a virada da
-    janela e zerar o contador no meio (teste instavel)."""
+    (blocos de 60 s), e um teste longo poderia cruzar a virada e zerar o contador. (A
+    instabilidade que de fato aparecia era o cull do DatabaseCache -- ver MAX_ENTRIES.)"""
     import time as real_time
     from types import SimpleNamespace
 
@@ -36,6 +36,22 @@ def _login(client, email, password="errada"):
 def test_shared_cache_backend(settings):
     # com varios workers gunicorn, o contador precisa ser o mesmo pra todos
     assert settings.CACHES["default"]["BACKEND"] == "django.core.cache.backends.db.DatabaseCache"
+    # e sem o cull do padrao (300 entradas), que apagava contadores no meio da janela
+    assert settings.CACHES["default"]["OPTIONS"]["MAX_ENTRIES"] >= 10_000
+
+
+@pytest.mark.django_db
+def test_counter_survives_many_cache_keys(client, ratelimit_on):
+    """Regressao: com MAX_ENTRIES=300 o cull apagava o contador de um e-mail quando
+    muitas outras chaves eram criadas, e o limite de login zerava."""
+    for i in range(5):
+        _login(client, "alvo@example.com")
+    # 400 outras chaves de rate limit. O cull apaga as de MENOR cache_key; "rl:zzz..."
+    # ordena depois de "rl:<hash hex>", entao o contador do alvo cai na faixa apagada
+    # (em producao isso acontece ao acaso entre os proprios hashes).
+    for i in range(400):
+        cache.set(f"rl:zzz{i:04d}", 1, 60)
+    assert _login(client, "alvo@example.com") == 429
 
 
 @pytest.mark.django_db

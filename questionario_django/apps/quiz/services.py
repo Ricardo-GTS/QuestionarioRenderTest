@@ -5,15 +5,15 @@ from apps.core.services import get_effective_settings
 from .models import QuizAttempt
 
 
-def pick_random_questions(exclude_author_id, size=None):
+def pick_random_questions(exclude_author_id, size=None, topic=None):
+    """topic: treino so' de um topico ("Treinar este topico" na pagina de Estatisticas)."""
     from apps.questions.models import Question, QuestionStatus
 
     n = size or get_effective_settings().quiz_size
-    return list(
-        Question.objects.filter(status=QuestionStatus.ACTIVE)
-        .exclude(author_id=exclude_author_id)
-        .order_by("?")[:n]
-    )
+    queryset = Question.objects.filter(status=QuestionStatus.ACTIVE).exclude(author_id=exclude_author_id)
+    if topic:
+        queryset = queryset.filter(topic=topic)
+    return list(queryset.order_by("?")[:n])
 
 
 def score_quiz(questions, answers: dict[int, bool]) -> dict:

@@ -136,3 +136,26 @@
 .report-reasons summary { cursor: pointer; font-weight: 600; }
 .chip-author { font-size: 0.75em; }
 .nav-badge { font-size: 0.75em; padding: 0 0.45em; }
+
+/* Estatisticas */
+.stats-note { color: var(--color-muted); font-size: 0.85em; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75em; margin-bottom: 1.5em; }
+.stat-tile { border: 2px solid var(--color-border); background: white; padding: 0.9em 1em; }
+.stat-label { margin: 0; color: var(--color-muted); font-size: 0.85em; }
+.stat-value { margin: 0.15em 0 0; font-family: var(--font-body); font-weight: 600; font-size: 1.9em; font-variant-numeric: tabular-nums; }
+.stat-sub { margin: 0; color: var(--color-muted); font-size: 0.8em; }
+.week-chart { width: 100%; max-width: 560px; height: auto; display: block; overflow: visible; }
+.chart-grid { stroke: var(--color-chart-grid); stroke-width: 1; }
+.chart-axis { fill: var(--color-muted); font-size: 9px; font-family: var(--font-body); }
+.chart-value { fill: var(--color-ink); font-size: 10px; font-weight: 600; font-family: var(--font-body); }
+.chart-bar { fill: var(--color-chart); }
+.chart-hit { fill: transparent; }
+.chart-band:hover .chart-bar { opacity: 0.8; }
+.chart-table table { border-collapse: collapse; margin-top: 0.5em; font-size: 0.9em; }
+.chart-table th, .chart-table td { padding: 0.2em 0.8em 0.2em 0; text-align: left; font-variant-numeric: tabular-nums; }
+.topic-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25em; }
+.topic-row { margin-bottom: 0.9em; }
+.topic-name { margin: 0 0 0.25em; font-weight: 600; }
+.topic-value { font-weight: 400; color: var(--color-muted); font-size: 0.85em; }
+.meter { height: 8px; background: var(--color-chart-track); border-radius: 4px; overflow: hidden; margin-bottom: 0.4em; }
+.meter span { display: block; height: 100%; background: var(--color-chart); border-radius: 4px; }

@@ -12,3 +12,13 @@
 
   --radius: 0;
 }
+
+/* Graficos (Estatisticas): uma serie so'. --color-chart e' um passo mais escuro do
+   accent -- #C88A1E ficava em 2.95:1 contra o card branco; este passa 3:1 (validado
+   com o validate_palette.js do skill dataviz). Track = passo claro do mesmo tom. */
+:root {
+  --color-chart: #B07818;
+  --color-chart-track: #F3E7D0;
+  --color-chart-grid: #E3E7E2;
+  --color-muted: #5F6B64;
+}

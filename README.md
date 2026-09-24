@@ -99,6 +99,10 @@ Alem do login por e-mail/senha, ha um botao "Entrar com Google" nas paginas de l
 
 No questionario, o aluno responde e ve na hora se acertou, a resposta correta e as referencias da questao; so' avanca quando clica em **Proxima**. Depois de responder aparecem **Comentarios** (le e escreve, dentro do proprio card) e **Reportar**. Depois do quiz, a aba **Minhas interacoes** lista as questoes em que ele comentou (com selo de comentarios novos) e os reportes que ele fez. Alunos podem reportar comentarios; o admin decide na aba **Comentarios reportados**.
 
+## Estatisticas
+
+A pagina Estatisticas mostra ao aluno: questoes respondidas, taxa de acerto (com a media anonima da turma), questionarios concluidos, dias seguidos estudando, evolucao semanal do acerto, melhores tópicos e tópicos para reforcar (com o botao **Treinar este topico**, que monta um questionario so' daquele topico), cobertura do banco de questoes, as estatisticas das questoes que ele criou e sua participacao (comentarios e precisao dos reportes). As respostas passaram a ser registradas em 24/09/2026.
+
 ## Minhas Questoes
 
 Pagina onde o aluno acompanha as questoes que criou: situacao (ativa, em analise ou removida), quantas vezes cada uma foi respondida e a taxa de acerto (a partir de 5 respostas), os motivos dos reportes (sem o nome de quem reportou) e os comentarios, que ele le e responde ali mesmo. O menu mostra "Minhas Questoes (N)" quando chegam comentarios novos. Questao removida fica com os comentarios so' para leitura.

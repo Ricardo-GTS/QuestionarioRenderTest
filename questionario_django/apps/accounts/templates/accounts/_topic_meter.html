@@ -1,0 +1,5 @@
+<div class="topic-row" title="{{ row.topic }}: {{ row.percent }}% de acerto em {{ row.total }} respostas">
+  <p class="topic-name">{{ row.topic }} <span class="topic-value">{{ row.percent }}% · {{ row.total }} respostas</span></p>
+  <div class="meter" aria-hidden="true"><span style="width: {{ row.percent }}%"></span></div>
+  {% if train %}<a class="btn btn-small" href="{% url 'quiz:start' %}?novo=1&amp;topico={{ row.topic|urlencode }}">Treinar este tópico</a>{% endif %}
+</div>

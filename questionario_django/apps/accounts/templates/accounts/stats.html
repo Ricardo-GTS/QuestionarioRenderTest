@@ -1,14 +1,136 @@
 {% extends "core/base.html" %}
-{% block title %}Estatisticas - Questionario{% endblock %}
+{% block title %}Estatísticas - Questionario{% endblock %}
 {% block content %}
-<h1>Minhas Estatisticas</h1>
+<h1>Minhas Estatísticas</h1>
+{% with s=stats.summary %}
+<p class="stats-note">{% if s.since %}Estatísticas de respostas a partir de {{ s.since|date:"d/m/Y" }}.{% else %}Suas respostas no questionário aparecem aqui assim que você começar.{% endif %}</p>
+
+<section class="stat-grid" aria-label="Resumo">
+  <div class="stat-tile">
+    <p class="stat-label">Questões respondidas</p>
+    <p class="stat-value">{{ s.answered }}</p>
+  </div>
+  <div class="stat-tile">
+    <p class="stat-label">Taxa de acerto</p>
+    <p class="stat-value">{% if s.percent is not None %}{{ s.percent }}%{% else %}—{% endif %}</p>
+    {% if s.class_percent is not None %}<p class="stat-sub">média da turma {{ s.class_percent }}%</p>{% endif %}
+  </div>
+  <div class="stat-tile">
+    <p class="stat-label">Questionários concluídos</p>
+    <p class="stat-value">{{ s.quizzes_completed }}</p>
+  </div>
+  <div class="stat-tile">
+    <p class="stat-label">Dias seguidos estudando</p>
+    <p class="stat-value">{{ s.streak }}</p>
+    <p class="stat-sub">recorde: {{ s.best_streak }} dia{{ s.best_streak|pluralize }}</p>
+  </div>
+  <div class="stat-tile">
+    <p class="stat-label">Questões criadas</p>
+    <p class="stat-value">{{ s.questions_created }}</p>
+  </div>
+</section>
+{% endwith %}
+
+<h2>Meu desempenho</h2>
+{% if not stats.summary.answered %}
+  <div class="card"><p>Faça um <a href="{% url 'quiz:start' %}">questionário</a> para ver seu desempenho aqui.</p></div>
+{% else %}
+  {% with chart=stats.weekly %}
+  <div class="card">
+    <h3>Acerto por semana <small>(últimas 8 semanas)</small></h3>
+    <svg class="week-chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="Taxa de acerto por semana nas últimas 8 semanas; valores na tabela abaixo">
+      {% for line in chart.grid %}
+        <line x1="0" x2="{{ chart.width }}" y1="{{ line.y }}" y2="{{ line.y }}" class="chart-grid"></line>
+        <text x="0" y="{{ line.y }}" dy="-2" class="chart-axis">{{ line.label }}</text>
+      {% endfor %}
+      {% for bar in chart.bars %}
+        <g class="chart-band">
+          <title>Semana de {{ bar.start|date:"d/m" }}: {% if bar.total %}{{ bar.percent }}% de acerto ({{ bar.total }} resposta{{ bar.total|pluralize }}){% else %}sem respostas{% endif %}</title>
+          <rect x="{{ bar.band_x }}" y="0" width="{{ bar.band_width }}" height="{{ chart.base }}" class="chart-hit"></rect>
+          {% if bar.path %}<path d="{{ bar.path }}" class="chart-bar"></path>{% endif %}
+          {% if bar.is_current and bar.total %}<text x="{{ bar.center }}" y="{{ bar.label_y }}" text-anchor="middle" class="chart-value">{{ bar.percent }}%</text>{% endif %}
+          <text x="{{ bar.center }}" y="{{ chart.tick_y }}" text-anchor="middle" class="chart-axis">{{ bar.start|date:"d/m" }}</text>
+        </g>
+      {% endfor %}
+    </svg>
+    <details class="chart-table">
+      <summary>Ver em tabela</summary>
+      <table>
+        <thead><tr><th>Semana de</th><th>Respostas</th><th>Acerto</th></tr></thead>
+        <tbody>
+          {% for bar in chart.bars %}
+            <tr><td>{{ bar.start|date:"d/m/Y" }}</td><td>{{ bar.total }}</td><td>{% if bar.total %}{{ bar.percent }}%{% else %}—{% endif %}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
+  </div>
+  {% endwith %}
+
+  <div class="card">
+    <h3>Por tópico</h3>
+    {% if not stats.best_topics and not stats.weak_topics %}
+      <p>Os tópicos aparecem aqui depois de 5 respostas em um mesmo tópico.</p>
+    {% else %}
+      <div class="topic-columns">
+        <div>
+          <h4>Seus melhores tópicos</h4>
+          {% for row in stats.best_topics %}{% include "accounts/_topic_meter.html" with train=False %}{% endfor %}
+        </div>
+        {% if stats.weak_topics %}
+          <div>
+            <h4>Tópicos para reforçar</h4>
+            {% for row in stats.weak_topics %}{% include "accounts/_topic_meter.html" with train=True %}{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h3>Cobertura</h3>
+    <p>Você já respondeu <strong>{{ stats.coverage.answered }}</strong> das {{ stats.coverage.available }} questões disponíveis{% if stats.coverage.percent is not None %} ({{ stats.coverage.percent }}%){% endif %}.</p>
+    <div class="meter" aria-hidden="true"><span style="width: {{ stats.coverage.percent|default:0 }}%"></span></div>
+  </div>
+{% endif %}
+
 <div class="card">
-  <p>Reportes aceitos (que voce fez): <strong>{{ reputation.accepted_reports_count }}</strong></p>
+  <h3>Últimos questionários concluídos</h3>
+  {% for attempt in stats.recent_attempts %}
+    <p>{{ attempt.created_at|date:"d/m/Y H:i" }} · <strong>{{ attempt.score }}/{{ attempt.total }}</strong>{% if attempt.percent is not None %} ({{ attempt.percent }}%){% endif %}</p>
+  {% empty %}
+    <p>Nenhum questionário concluído ainda. <a href="{% url 'quiz:start' %}">Fazer um questionário</a></p>
+  {% endfor %}
 </div>
+
+<h2>Minhas questões</h2>
+{% with a=stats.author %}
+{% if not stats.summary.questions_created %}
+  <div class="card"><p>Você ainda não criou questões. <a href="{% url 'questions:create' %}">Criar Pergunta</a></p></div>
+{% else %}
+  <div class="card">
+    <p>{{ a.active }} ativa{{ a.active|pluralize }} · {{ a.reported }} em análise · {{ a.removed }} removida{{ a.removed|pluralize }} · <a href="{% url 'questions:mine' %}">Ver Minhas Questões</a></p>
+    {% if a.answers %}
+      <p>Suas questões foram respondidas <strong>{{ a.answers }}</strong> vez{{ a.answers|pluralize:"es" }} por outros alunos · <strong>{{ a.percent }}%</strong> de acerto.</p>
+      {% if a.most_answered %}<p>Mais respondida: “{{ a.most_answered.statement|truncatechars:90 }}” ({{ a.most_answered.total }} resposta{{ a.most_answered.total|pluralize }})</p>{% endif %}
+      {% if a.hardest %}<p>Mais difícil: “{{ a.hardest.statement|truncatechars:90 }}” ({{ a.hardest.percent }}% de acerto)</p>{% endif %}
+      {% if a.easiest %}<p>Mais fácil: “{{ a.easiest.statement|truncatechars:90 }}” ({{ a.easiest.percent }}% de acerto)</p>{% endif %}
+      {% if not a.hardest %}<p class="stats-note">Mais difícil e mais fácil aparecem quando uma questão tiver 5 respostas.</p>{% endif %}
+    {% else %}
+      <p>Nenhum aluno respondeu suas questões ainda.</p>
+    {% endif %}
+    <p>Comentários recebidos de outros alunos: <strong>{{ a.comments_received }}</strong></p>
+  </div>
+{% endif %}
+{% endwith %}
+
+<h2>Participação</h2>
+{% with p=stats.participation %}
 <div class="card">
-  <p>Reportes rejeitados (que voce fez): <strong>{{ reputation.rejected_reports_count }}</strong></p>
+  <p>Comentários feitos: <strong>{{ p.comments_made }}</strong> · Reportes de comentários: <strong>{{ p.comment_reports }}</strong></p>
+  <p>Reportes de questões: <strong>{{ p.reports_pending }}</strong> pendente{{ p.reports_pending|pluralize }} · <strong>{{ p.reports_accepted }}</strong> aceito{{ p.reports_accepted|pluralize }} · <strong>{{ p.reports_rejected }}</strong> rejeitado{{ p.reports_rejected|pluralize }}</p>
+  {% if p.report_precision is not None %}<p>Precisão dos seus reportes: <strong>{{ p.report_precision }}%</strong> foram aceitos pelo professor.</p>{% endif %}
+  <p>Suas questões removidas: <strong>{{ stats.author.removed }}</strong></p>
 </div>
-<div class="card">
-  <p>Perguntas suas removidas por reporte: <strong>{{ reputation.questions_removed_count }}</strong></p>
-</div>
+{% endwith %}
 {% endblock %}

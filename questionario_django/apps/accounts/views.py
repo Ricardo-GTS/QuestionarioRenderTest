@@ -506,10 +506,9 @@ def my_interactions(request):
 
 @login_required
 def my_stats(request):
-    from apps.moderation.services import compute_user_reputation
+    from .stats import build_user_stats
 
-    reputation = compute_user_reputation(request.user.id)
-    return render(request, "accounts/stats.html", {"reputation": reputation})
+    return render(request, "accounts/stats.html", {"stats": build_user_stats(request.user)})
 
 
 @admin_required

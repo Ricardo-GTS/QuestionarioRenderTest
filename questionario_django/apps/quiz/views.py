@@ -15,7 +15,7 @@ from django.views.decorators.http import require_POST
 
 from .services import current_position, pick_random_questions, quiz_expired, record_attempt, score_quiz
 
-SESSION_KEYS = ("quiz_question_ids", "quiz_answers", "quiz_position", "quiz_started_at")
+SESSION_KEYS = ("quiz_question_ids", "quiz_answers", "quiz_position", "quiz_started_at", "quiz_topic")
 
 
 def question_answered_in_quiz(request, question_id: int) -> bool:
@@ -23,8 +23,17 @@ def question_answered_in_quiz(request, question_id: int) -> bool:
     return str(question_id) in request.session.get("quiz_answers", {})
 
 
-def _new_quiz(request):
-    questions = pick_random_questions(exclude_author_id=request.user.id)
+def _requested_topic(request):
+    """?topico= so' vale se for um topico que existe (senao, quiz normal)."""
+    from apps.questions.services import list_topic_names
+
+    topic = (request.GET.get("topico") or "").strip()
+    return topic if topic and topic in list_topic_names() else None
+
+
+def _new_quiz(request, topic=None):
+    questions = pick_random_questions(exclude_author_id=request.user.id, topic=topic)
+    request.session["quiz_topic"] = topic
     request.session["quiz_question_ids"] = [q.id for q in questions]
     request.session["quiz_answers"] = {}
     request.session["quiz_position"] = 0
@@ -64,8 +73,9 @@ def _current_question(request):
 
 def _card_context(request):
     ids = request.session.get("quiz_question_ids", [])
+    topic = request.session.get("quiz_topic")
     if not ids:
-        return {"no_questions": True}
+        return {"no_questions": True, "topic": topic}
     question = _current_question(request)
     if question is None:
         return {"finished": True}
@@ -73,6 +83,7 @@ def _card_context(request):
     given = answers.get(str(question.id))
     context = {
         "question": question,
+        "topic": topic,
         "index": _position(request) + 1,
         "total": len(request.session["quiz_question_ids"]),
         "answered": given is not None,
@@ -108,7 +119,7 @@ def _posted_question_id(request):
 @login_required
 def start(request):
     if request.GET.get("novo") or not _quiz_in_progress(request):
-        _new_quiz(request)
+        _new_quiz(request, topic=_requested_topic(request))
     context = _card_context(request)
     if context.get("finished"):
         return redirect("quiz:result")

@@ -124,7 +124,9 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LANGUAGE_CODE = "pt-br"
-TIME_ZONE = "UTC"
+# Fuso da UFPB (Joao Pessoa, UTC-3, sem horario de verao). O banco continua guardando
+# em UTC (USE_TZ); isto muda a exibicao e o agrupamento por dia/semana das estatisticas.
+TIME_ZONE = "America/Recife"
 USE_I18N = True
 USE_TZ = True
 
@@ -183,10 +185,15 @@ EMAIL_SEND_ASYNC = env_bool("EMAIL_SEND_ASYNC", True)
 # proprio LocMem e o limite "5/min" viraria 5 por worker. O banco e' compartilhado.
 # Incremento nao e' atomico (pode passar 1 tentativa a mais em requests simultaneos) --
 # aceitavel aqui; Redis seria o ideal se o volume crescer.
+# MAX_ENTRIES alto: o padrao do DatabaseCache e' 300 e, ao passar disso, ele apaga 1/3
+# das chaves (em ordem de cache_key) -- contadores do rate limit sumiam no meio da janela
+# e o limite zerava sem aviso (uma turma gera centenas de chaves: por e-mail/usuario/tela).
+# Chaves expiradas continuam sendo limpas no cull.
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "django_cache",
+        "OPTIONS": {"MAX_ENTRIES": 100_000},
     }
 }
 
