@@ -56,3 +56,6 @@ logs/
 
 # Scripts e dados de analise/importacao (locais, nao fazem parte do sistema)
 questionario_django/analise/
+
+# Backups do banco (scripts/backup_*.sh)
+backups/

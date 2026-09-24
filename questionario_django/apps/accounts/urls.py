@@ -21,6 +21,7 @@ urlpatterns = [
     path("conta/confirmar-email", views.confirm_email_change, name="confirm_email_change"),
     path("conta/confirmar-email/reenviar", views.resend_email_change_code, name="resend_email_change_code"),
     path("conta/confirmar-email/cancelar", views.cancel_email_change, name="cancel_email_change"),
+    path("semestre/participar", views.join_semester, name="join_semester"),
     path("conta/matricula", views.complete_registration_number, name="complete_registration_number"),
     path("estatisticas", views.my_stats, name="stats"),
     path("interacoes", views.my_interactions, name="interactions"),

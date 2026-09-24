@@ -99,6 +99,29 @@ Alem do login por e-mail/senha, ha um botao "Entrar com Google" nas paginas de l
 
 No questionario, o aluno responde e ve na hora se acertou, a resposta correta e as referencias da questao; so' avanca quando clica em **Proxima**. Depois de responder aparecem **Comentarios** (le e escreve, dentro do proprio card) e **Reportar**. Depois do quiz, a aba **Minhas interacoes** lista as questoes em que ele comentou (com selo de comentarios novos) e os reportes que ele fez. Alunos podem reportar comentarios; o admin decide na aba **Comentarios reportados**.
 
+## Semestres
+
+Cada semestre e' isolado num schema proprio do Postgres: questoes, questionarios, checagem de duplicatas, topicos, estatisticas e configuracoes sao do semestre. O semestre novo comeca do zero e os anteriores continuam guardados. No painel do admin, o seletor **Semestre** no topo escolhe qual semestre ver, e a pagina **Semestres** abre um novo (copiando os topicos, se quiser) ou reativa um anterior. Alunos mantem o login; ao entrar num semestre novo, clicam em "Participar".
+
+**Antes de abrir um semestre, faca o backup:**
+
+```bash
+scripts/backup_db.sh fim-2026.1          # banco inteiro -> backups/
+scripts/backup_semestre.sh 2026.1        # so' um semestre (o schema dele)
+```
+
+Para restaurar: `docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d <banco> --clean' < backups/<arquivo>.dump` (de preferencia num banco novo, para consultar sem mexer no atual).
+
+**Migracao de uma instalacao antiga** (antes dos semestres, com tudo no schema public) -- uma vez so':
+
+```bash
+scripts/backup_db.sh antes-semestres
+docker compose build django
+docker compose run --rm django sh -c "python manage.py migrate && python manage.py criar_primeiro_semestre 2026.1 --dry-run"
+docker compose run --rm django sh -c "python manage.py criar_primeiro_semestre 2026.1"
+docker compose up -d django
+```
+
 ## Estatisticas
 
 A pagina Estatisticas mostra ao aluno: questoes respondidas, taxa de acerto (com a media anonima da turma), questionarios concluidos, dias seguidos estudando, evolucao semanal do acerto, melhores tópicos e tópicos para reforcar (com o botao **Treinar este topico**, que monta um questionario so' daquele topico), cobertura do banco de questoes, as estatisticas das questoes que ele criou e sua participacao (comentarios e precisao dos reportes). As respostas passaram a ser registradas em 24/09/2026.

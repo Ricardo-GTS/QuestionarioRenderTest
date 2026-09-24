@@ -28,15 +28,24 @@ DEBUG = env_bool("DJANGO_DEBUG", True)
 
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
-INSTALLED_APPS = [
+# --- Semestres: um schema do Postgres por semestre (django-tenants) ---
+# SHARED_APPS ficam no schema "public" (contas, sessoes, cache, lista de semestres).
+# TENANT_APPS tem uma copia das tabelas em CADA schema de semestre (s2026_1, s2026_2...):
+# questoes, respostas, quiz, comentarios, reportes, topicos -- isolamento fisico.
+# Ver CLAUDE.md, secao "Semestres (django-tenants)".
+SHARED_APPS = [
+    "django_tenants",
+    "apps.core",
+    "apps.accounts",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "apps.core",
-    "apps.accounts",
+]
+TENANT_APPS = [
+    "django.contrib.contenttypes",
     "apps.questions",
     "apps.quiz",
     "apps.moderation",
@@ -45,7 +54,12 @@ INSTALLED_APPS = [
 # Scripts de analise/importacao (pasta local, fora do git -- ver .gitignore):
 # so' registra o app se a pasta existir, pro sistema funcionar igual sem ela.
 if (BASE_DIR / "analise").is_dir():
-    INSTALLED_APPS.append("analise")
+    SHARED_APPS.append("analise")
+
+INSTALLED_APPS = list(SHARED_APPS) + [app for app in TENANT_APPS if app not in SHARED_APPS]
+TENANT_MODEL = "core.Semester"
+TENANT_DOMAIN_MODEL = "core.Domain"
+DATABASE_ROUTERS = ["django_tenants.routers.TenantSyncRouter"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -54,6 +68,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.SemesterMiddleware",
     "apps.accounts.middleware.RequireRegistrationNumberMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -99,7 +114,7 @@ def _parse_database_url(url):
 
     parsed = urlparse(url)
     return {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": "django_tenants.postgresql_backend",
         "NAME": parsed.path.lstrip("/"),
         "USER": parsed.username,
         "PASSWORD": parsed.password,

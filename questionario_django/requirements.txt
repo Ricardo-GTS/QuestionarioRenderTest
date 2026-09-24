@@ -12,3 +12,4 @@ gunicorn==26.2.0
 pytest==8.3.3
 pytest-django==4.9.0
 tzdata==2026.4
+django-tenants==3.14.0

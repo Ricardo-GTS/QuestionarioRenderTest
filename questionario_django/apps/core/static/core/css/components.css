@@ -159,3 +159,12 @@
 .topic-value { font-weight: 400; color: var(--color-muted); font-size: 0.85em; }
 .meter { height: 8px; background: var(--color-chart-track); border-radius: 4px; overflow: hidden; margin-bottom: 0.4em; }
 .meter span { display: block; height: 100%; background: var(--color-chart); border-radius: 4px; }
+
+/* Semestres (admin) */
+.semester-selector { display: flex; align-items: center; gap: 0.5em; margin-bottom: 0.5em; }
+.semester-notice { display: block; margin-bottom: 0.75em; }
+.semester-table { border-collapse: collapse; width: 100%; font-size: 0.95em; }
+.semester-table th, .semester-table td { padding: 0.35em 0.6em 0.35em 0; text-align: left; font-variant-numeric: tabular-nums; }
+.semester-table form { margin: 0; }
+.backup-reminder { border: 1.5px dashed var(--color-border); padding: 0.6em 0.9em; margin: 0.75em 0; }
+.backup-reminder pre { margin: 0.3em 0; }

@@ -519,7 +519,10 @@ def admin_user_list(request):
     reputation_map = compute_all_users_reputation()
     question_counts = dict(Question.objects.values_list("author_id").annotate(count=Count("id")))
 
-    users_data = [_admin_user_data(u, reputation_map, question_counts) for u in User.objects.all().order_by("name")]
+    # So' quem participa do semestre que o admin esta vendo (contas sao compartilhadas;
+    # reputacao e contagens ja' vem do schema desse semestre).
+    users = User.objects.filter(enrollments__semester=request.semester).order_by("name")
+    users_data = [_admin_user_data(u, reputation_map, question_counts) for u in users]
     return render(request, "accounts/admin_users.html", {"users": users_data})
 
 
@@ -576,7 +579,24 @@ def admin_delete_user(request, user_id):
             return HttpResponse("Nao e' possivel excluir a propria conta", status=400)
         messages.error(request, "Nao e' possivel excluir a propria conta")
         return redirect("accounts:admin_user_list")
-    target.delete()
+    from .services import delete_user_everywhere
+
+    delete_user_everywhere(target)
     if request.headers.get("HX-Request"):
         return HttpResponse("")
     return redirect("accounts:admin_user_list")
+
+
+@login_required
+def join_semester(request):
+    """Conta de um semestre anterior entrando depois que um novo foi aberto."""
+    from apps.core.semesters import enroll, is_enrolled
+
+    semester = getattr(request, "semester", None)
+    if semester is None or is_enrolled(request.user, semester):
+        return redirect(settings.LOGIN_REDIRECT_URL)
+    if request.method == "POST":
+        enroll(request.user, semester)
+        messages.success(request, f"Bem-vindo ao semestre {semester.name}!")
+        return redirect(settings.LOGIN_REDIRECT_URL)
+    return render(request, "accounts/join_semester.html", {"semester": semester})

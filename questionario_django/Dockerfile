@@ -10,6 +10,8 @@ COPY . .
 
 RUN python manage.py collectstatic --noinput
 
+# migrate = migrate_schemas (django-tenants): migrations compartilhadas no schema public e
+# depois as das apps por semestre em cada schema de semestre.
 # Varios workers: um request esperando Ollama/SMTP nao trava os outros. O cache do
 # rate limit e' o DatabaseCache (compartilhado entre workers; createcachetable cria a
 # tabela). warm_ollama roda em background pra carregar o modelo de embedding sem

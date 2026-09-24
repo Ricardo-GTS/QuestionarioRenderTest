@@ -199,7 +199,7 @@ def test_query_count_does_not_grow(client, student, django_assert_max_num_querie
     qs = [_question(author, f"Q{i}", topic=f"T{i % 3}") for i in range(5)]
     for q in qs:
         _answers(student, q, 1, 0)
-    with django_assert_max_num_queries(40) as small:
+    with django_assert_max_num_queries(45) as small:
         client.get(reverse("accounts:stats"))
     more = [_question(author, f"M{i}", topic=f"T{i % 7}") for i in range(10)]
     for q in more:

@@ -9,6 +9,50 @@ import pytest
 from django.test import Client
 
 
+TEST_SEMESTER = {"name": "2026.1", "schema_name": "s2026_1"}
+
+
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_setup, django_db_blocker):
+    """Semestres (django-tenants): o banco de teste so' tem o schema public depois do
+    migrate; cria UM semestre ativo (schema + migrations das apps por semestre) pra
+    sessao inteira."""
+    with django_db_blocker.unblock():
+        from django.conf import settings as dj_settings
+        from django.db import connection
+
+        from apps.core.models import Domain, Semester
+
+        connection.set_schema_to_public()
+        semester = Semester(
+            is_active=True,
+            similarity_threshold=dj_settings.SIMILARITY_THRESHOLD,
+            quiz_size=dj_settings.QUIZ_SIZE,
+            report_threshold=dj_settings.REPORT_THRESHOLD,
+            **TEST_SEMESTER,
+        )
+        semester.save(verbosity=0)
+        Domain.objects.create(domain="s2026_1.semestre.local", tenant=semester, is_primary=True)
+
+
+@pytest.fixture(autouse=True)
+def _active_semester_schema(request):
+    """Todo teste com banco roda dentro do schema do semestre ativo (como o
+    SemesterMiddleware faz em cada request)."""
+    if request.node.get_closest_marker("django_db") is None and "db" not in request.fixturenames:
+        yield
+        return
+    request.getfixturevalue("db")
+    from django.db import connection
+
+    from apps.core.models import Semester
+
+    connection.set_schema_to_public()
+    connection.set_tenant(Semester.objects.get(is_active=True))
+    yield
+    connection.set_schema_to_public()
+
+
 @pytest.fixture(autouse=True)
 def _admin_emails(settings):
     settings.ADMIN_EMAILS = {"admin@example.com"}

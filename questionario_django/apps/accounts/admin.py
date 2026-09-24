@@ -10,6 +10,12 @@ class UserAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)
     ordering = ("name",)
 
+    def has_delete_permission(self, request, obj=None):
+        # Com semestres em schemas separados, o delete() do Django nao enxerga os dados da
+        # pessoa em outros semestres e falharia; excluir so' pelo painel da aplicacao
+        # (Usuarios), que usa accounts.services.delete_user_everywhere.
+        return False
+
 
 @admin.register(PendingRegistration)
 class PendingRegistrationAdmin(admin.ModelAdmin):

@@ -30,28 +30,37 @@ def async_email(settings, monkeypatch):
     settings.EMAIL_SEND_ASYNC = True
     _InlineThread.started = 0
     monkeypatch.setattr(services.threading, "Thread", _InlineThread)
+    # A thread "inline" roda na conexao do proprio teste; o close_all() do fim do envio
+    # (correto numa thread real, que tem conexao propria) fecharia a transacao do teste.
+    monkeypatch.setattr(services.connections, "close_all", lambda: None)
     return _InlineThread
 
 
-@pytest.mark.django_db(transaction=True)
-def test_async_send_runs_in_background_thread(client, async_email):
-    resp = client.post(reverse("accounts:register"), REGISTER)
+# Sem transaction=True: com os semestres em schemas (django-tenants), o flush de um
+# teste transacional apagaria o semestre de teste. Os callbacks de on_commit (onde a
+# thread e' disparada) rodam via django_capture_on_commit_callbacks.
+@pytest.mark.django_db
+def test_async_send_runs_in_background_thread(client, async_email, django_capture_on_commit_callbacks):
+    with django_capture_on_commit_callbacks(execute=True):
+        resp = client.post(reverse("accounts:register"), REGISTER)
     assert resp.url == reverse("accounts:confirm_registration")
     assert async_email.started == 1
     assert len(mail.outbox) == 1
     assert EmailSendLog.objects.count() == 1
 
 
-@pytest.mark.django_db(transaction=True)
-def test_async_send_failure_removes_send_log_so_resend_is_free(client, async_email):
+@pytest.mark.django_db
+def test_async_send_failure_removes_send_log_so_resend_is_free(client, async_email, django_capture_on_commit_callbacks):
     with mock.patch("apps.accounts.services.send_mail", side_effect=OSError("smtp down")):
-        resp = client.post(reverse("accounts:register"), REGISTER)
+        with django_capture_on_commit_callbacks(execute=True):
+            resp = client.post(reverse("accounts:register"), REGISTER)
     # em background a tela nao sabe da falha na hora...
     assert resp.url == reverse("accounts:confirm_registration")
     # ...mas o log sumiu, entao o reenvio fica liberado imediatamente
     assert not EmailSendLog.objects.exists()
     assert PendingRegistration.objects.count() == 1
-    client.post(reverse("accounts:resend_registration_code"))
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(reverse("accounts:resend_registration_code"))
     assert len(mail.outbox) == 1
 
 

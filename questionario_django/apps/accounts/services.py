@@ -207,7 +207,10 @@ def dispatch_email(send, *, on_failure=None):
         except Exception:
             logger.exception("Falha no envio de e-mail em background")
         finally:
-            connections.close_all()  # thread fora do ciclo de request: fecha a conexao do banco
+            # Thread fora do ciclo de request: conexao propria, que comeca no schema
+            # "public" (sem semestre). Hoje so' mexe em EmailSendLog (public); se um dia
+            # precisar de dado de semestre, ativar o schema aqui (django_tenants.utils.schema_context).
+            connections.close_all()
 
     # So' depois do commit: a thread nao pode ver (nem apagar) dado que ainda nao existe.
     transaction.on_commit(lambda: threading.Thread(target=run, daemon=True).start())
@@ -474,3 +477,40 @@ def complete_reauth(user, code: str, now=None) -> CodeCheck:
     if result.status == "ok":
         req.delete()
     return result
+
+
+# --- Exclusao de conta (semestres em schemas separados) ---
+
+
+@transaction.atomic
+def delete_user_everywhere(user) -> None:
+    """Apaga a conta e os dados dela em TODOS os semestres. O delete() do Django so'
+    enxerga os objetos relacionados do schema atual -- com questoes/comentarios da pessoa
+    em outro semestre (outro schema), o FK pra conta faria o DELETE falhar. Entao limpa
+    schema por schema e so' depois apaga a conta (de dentro de um schema de semestre, pra
+    o coletor do Django achar as tabelas das apps por semestre)."""
+    from django.db import connection
+    from django_tenants.utils import schema_context
+
+    from apps.core.models import Semester
+    from apps.moderation.models import Report
+    from apps.questions.models import CommentReport, CommentSeen, Question, QuestionAnswer, QuestionComment
+    from apps.quiz.models import QuizAttempt
+
+    previous = connection.tenant
+    semesters = list(Semester.objects.all())
+    for semester in semesters:
+        with schema_context(semester.schema_name):
+            Question.objects.filter(author=user).delete()  # leva comentarios/respostas/reportes delas
+            QuestionComment.objects.filter(author=user).delete()
+            Report.objects.filter(reporter=user).delete()
+            CommentReport.objects.filter(reporter=user).delete()
+            CommentSeen.objects.filter(user=user).delete()
+            QuizAttempt.objects.filter(user=user).delete()
+            QuestionAnswer.objects.filter(user=user).update(user=None)  # estatistica da questao fica
+    if semesters:
+        with schema_context(semesters[0].schema_name):
+            user.delete()
+    else:
+        user.delete()
+    connection.set_tenant(previous) if isinstance(previous, Semester) else connection.set_schema_to_public()

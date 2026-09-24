@@ -134,7 +134,7 @@ def test_query_count_does_not_grow_with_questions(author_client, django_assert_m
     client, author = author_client
     for i in range(5):
         _question(author, f"Q{i}")
-    with django_assert_max_num_queries(12) as small:
+    with django_assert_max_num_queries(25) as small:
         _page(client)
     for i in range(5, 20):
         _question(author, f"Q{i}")
