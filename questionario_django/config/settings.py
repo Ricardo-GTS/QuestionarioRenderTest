@@ -113,6 +113,15 @@ WSGI_APPLICATION = "config.wsgi.application"
 # manually to avoid adding a dj-database-url dependency for a single URL.
 
 # DATABASE_URL tambem e' aceito: e' o nome que o Render usa na documentacao.
+# No Render (que sempre define RENDER=true), sem nenhuma das duas o padrao "localhost"
+# so' daria "Connection refused" -- melhor parar com a causa escrita.
+if os.environ.get("RENDER") and not (os.environ.get("DJANGO_DATABASE_URL") or os.environ.get("DATABASE_URL")):
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(
+        "Faltando o endereco do banco: no painel do servico, Environment, adicione DATABASE_URL "
+        "com a Internal Database URL do Postgres do Render (ou crie o servico pelo Blueprint)."
+    )
 DATABASE_URL = (
     os.environ.get("DJANGO_DATABASE_URL")
     or os.environ.get("DATABASE_URL")
