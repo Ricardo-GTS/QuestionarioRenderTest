@@ -78,20 +78,10 @@ class CommentReportStatus(models.TextChoices):
     REJECTED = "rejected", "Rejeitado"
 
 
-COMMENT_REPORT_CATEGORIES = (
-    "Ofensivo ou inadequado",
-    "Entrega a resposta",
-    "Spam ou fora do tema",
-    "Outro",
-)
-COMMENT_REPORT_CATEGORY_CHOICES = [(c, c) for c in COMMENT_REPORT_CATEGORIES]
-
-
 class CommentReport(models.Model):
     comment = models.ForeignKey(QuestionComment, on_delete=models.CASCADE, related_name="reports")
     reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="comment_reports")
-    reason_category = models.CharField(max_length=60, choices=COMMENT_REPORT_CATEGORY_CHOICES)
-    reason = models.TextField(null=True, blank=True)
+    reason = models.TextField()  # motivo escrito pelo aluno, sempre obrigatorio
     status = models.CharField(max_length=20, choices=CommentReportStatus.choices, default=CommentReportStatus.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 

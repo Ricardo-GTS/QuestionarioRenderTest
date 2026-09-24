@@ -66,7 +66,7 @@ Cada app tem seu proprio `services.py` (logica de decisao pura, sem tocar ORM/re
 
 **Moderacao (RF04):** `moderation.views.report_question` grava o `Report` (um por par question+reporter — `UniqueConstraint`, view checa antes de criar) e `services.register_report` verifica a contagem; ao atingir `REPORT_THRESHOLD`, muda `Question.status` para `reported` — isso so' controla se a pergunta sai do pool do quiz (`quiz.services.pick_random_questions` so' seleciona `status=active`), **nao** controla o que o admin ve na fila de moderacao (ver abaixo).
 
-`ReportForm` (`apps/moderation/forms.py`) exige `reason_category` (uma de `REASON_CATEGORY_CHOICES`) e so' exige `reason` (texto livre) quando `reason_category == "Outro"` — validado no metodo `clean()` do form (cross-field), nao em campos separados. `Report.reason` e' `null=True` no model por causa disso.
+`ReportForm` (`apps/moderation/forms.py`) tem so' o campo `reason` (texto livre, **sempre obrigatorio**, 3 a 1000 caracteres) -- nao ha mais lista de tipos de problema. O mesmo vale pro reporte de comentario (`questions.forms.CommentReportForm`, 3 a 500). A coluna `reason_category` foi removida dos dois models (nao havia nenhum reporte no banco quando isso mudou); `reason` e' NOT NULL, e as migrations `moderation/0002_fill_report_reason` e `questions/0008_fill_comment_report_reason` preenchem motivo vazio antigo antes do `AlterField` (migrations separadas, mesma regra do "pending trigger events").
 
 A fila de moderacao (`moderation.views.pending_reports`, `services.list_questions_with_pending_reports`) lista perguntas com **pelo menos 1 `Report.status=pending`**, independente do status da pergunta — de proposito, diferente de `status=reported`, pra um reporte nunca ficar "preso" inacessivel so' porque a pergunta ja saiu desse status (ex: foi removida antes do reporte ser resolvido). Tambem mostra reportes desde o primeiro, antes do auto-flag por `REPORT_THRESHOLD`.
 
@@ -137,7 +137,7 @@ Plataforma web onde alunos se cadastram, criam perguntas de Verdadeiro ou Falso 
 - Ao final, sistema mostra pontuação (acertos/total) e feedback por pergunta.
 
 **RF04 — Reporte de perguntas**
-- Usuário pode reportar uma pergunta como incorreta/problemática, com tipo de problema **obrigatório** (lista fechada: resposta incorreta, enunciado ambíguo ou confuso, conteúdo ofensivo ou inadequado, pergunta duplicada, fora do tema, outro) + motivo (texto livre) **opcional**, exceto quando o tipo é "outro" (aí o texto livre é obrigatório — é a única pista do motivo real).
+- Usuário pode reportar uma pergunta como incorreta/problemática escrevendo o motivo (texto livre, **sempre obrigatório**; a lista fechada de tipos de problema foi removida depois do MVP). Comentários de outros alunos também podem ser reportados, com a mesma regra.
 - Um usuário só pode reportar a mesma pergunta uma vez.
 - Reportes ficam associados à pergunta e ao usuário que reportou, com data.
 - Regra de moderação: flag automática para revisão após N reportes (default configurável 3), sem remoção automática definitiva.
@@ -167,7 +167,7 @@ Plataforma web onde alunos se cadastram, criam perguntas de Verdadeiro ou Falso 
 
 ### Painel de admin (professor) — adicionado após o MVP
 
-Requisito posterior ao MVP inicial: `role`-free (via `ADMIN_EMAILS`), moderação de perguntas reportadas (aprovar/remover/editar com recálculo de embedding), gestão de usuários (listar + excluir), dashboard (totais, taxa média de acerto via `QuizAttempt`, perguntas/reportes por categoria), e os 3 thresholds de negócio editáveis em runtime. Ver seção "Arquitetura" acima para os arquivos.
+Requisito posterior ao MVP inicial: `role`-free (via `ADMIN_EMAILS`), moderação de perguntas reportadas (aprovar/remover/editar com recálculo de embedding), gestão de usuários (listar + excluir), dashboard (totais, taxa média de acerto via `QuizAttempt`, perguntas por tópico), e os 3 thresholds de negócio editáveis em runtime. Ver seção "Arquitetura" acima para os arquivos.
 
 **Topicos (aba "Topicos", `/admin/topicos`):** `Question.topic` continua texto livre (nao FK). O model `questions.Topic` e' so' um catalogo pra guardar topicos criados pelo admin que ainda nao tem pergunta; a lista exibida nos selects e na aba e' a uniao do catalogo com os topicos ja usados (`questions.services.list_topic_names`). Renomear (`moderation.services.rename_topic`) atualiza todas as perguntas; renomear pra um nome ja existente e' recusado. Excluir (`delete_topic`) um topico em uso tem dois botoes: "Mover Questoes e Excluir Topico" (`reassign_to`, move as perguntas pra outro topico -- e' tambem a forma de juntar dois topicos) ou "Excluir Topico e Questoes" (`delete_questions=True`, hard delete das perguntas, com os reports delas em cascata, o que tambem some da reputacao).
 

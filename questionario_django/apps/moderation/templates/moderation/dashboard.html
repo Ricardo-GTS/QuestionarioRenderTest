@@ -23,13 +23,4 @@
     <p>Nenhuma pergunta cadastrada.</p>
   {% endfor %}
 </div>
-
-<div class="card">
-  <h2>Reportes por categoria</h2>
-  {% for row in stats.reports_by_category %}
-    <p>{{ row.category }}: {{ row.count }}</p>
-  {% empty %}
-    <p>Nenhum reporte registrado.</p>
-  {% endfor %}
-</div>
 {% endblock %}

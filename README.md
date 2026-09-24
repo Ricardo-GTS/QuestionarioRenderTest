@@ -101,7 +101,7 @@ No questionario, o aluno responde e ve na hora se acertou, a resposta correta e 
 
 ## Moderacao
 
-Cada reporte em uma pergunta e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva). Um usuario so pode reportar a mesma pergunta uma vez. O tipo de problema (lista fechada: resposta incorreta, enunciado ambiguo, conteudo ofensivo, duplicada, fora do tema, outro) e' obrigatorio; o motivo em texto livre e' opcional, exceto quando o tipo e' "outro".
+Cada reporte em uma pergunta e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva). Um usuario so pode reportar a mesma pergunta uma vez. O aluno sempre escreve o motivo do reporte (campo de texto obrigatorio, sem lista de tipos); o mesmo vale para reportar um comentario.
 
 A fila de moderacao (`/admin/moderacao`) lista perguntas com reporte pendente, independente do status delas -- nao so as que ja atingiram `REPORT_THRESHOLD`. O admin resolve com uma decisao so por pergunta: **Aprovar Remocao** (remove a pergunta, aceita os reportes pendentes) ou **Rejeitar Remocao** (mantem/reativa a pergunta, rejeita os reportes pendentes) -- ambas via HTMX, sem reload da pagina. Uma pergunta removida pode ser reativada e editada na aba "Perguntas Removidas". Reportes aceitos contam pra reputacao de quem reportou; perguntas removidas contam como penalidade pra quem criou a pergunta -- os dois numeros ficam visiveis pro proprio usuario na pagina "Estatisticas" e pro admin em Usuarios.
 
@@ -130,7 +130,7 @@ O nome pode ser alterado direto. Para alterar o e-mail ou a senha, o aluno clica
 
 Quem estiver listado em `ADMIN_EMAILS` vira admin automaticamente ao logar (sem cadastro especial, sem coluna de role no banco). Acesso em `/admin`:
 
-- **Visao Geral** (`/admin`) — totais de usuarios/perguntas/reportes, taxa media de acerto, perguntas e reportes por categoria.
+- **Visao Geral** (`/admin`) — totais de usuarios/perguntas/reportes, taxa media de acerto, perguntas por topico.
 - **Moderacao** (`/admin/moderacao`) — lista perguntas com reporte pendente (mostra resposta cadastrada e quem reportou), Aprova Remocao/Rejeita Remocao (decisao unica que resolve a pergunta e todos os reportes pendentes dela).
 - **Perguntas Removidas** (`/admin/removidas`) — lista perguntas removidas, com opcao de editar (inline, via HTMX) e reativar (volta pra `active`).
 - **Usuarios** (`/admin/usuarios`) — lista com contagem de perguntas por usuario, reputacao (reportes aceitos/rejeitados, perguntas removidas), edicao da matricula e exclusao de conta (nao permite excluir a propria conta admin por ali). O aluno nao exclui a propria conta nem altera a matricula.

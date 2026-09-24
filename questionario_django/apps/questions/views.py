@@ -126,8 +126,7 @@ def report_comment(request, comment_id):
             error = services.register_comment_report(
                 comment=comment,
                 reporter=request.user,
-                reason_category=form.cleaned_data["reason_category"],
-                reason=(form.cleaned_data.get("reason") or "").strip() or None,
+                reason=form.cleaned_data["reason"],
             )
             sent = error is None
     else:

@@ -34,8 +34,8 @@ class QuestionCommentAdmin(admin.ModelAdmin):
 
 @admin.register(CommentReport)
 class CommentReportAdmin(admin.ModelAdmin):
-    list_display = ("id", "comment", "reporter", "reason_category", "status", "created_at")
-    list_filter = ("status", "reason_category")
+    list_display = ("id", "comment", "reporter", "reason", "status", "created_at")
+    list_filter = ("status",)
 
 
 @admin.register(CommentSeen)

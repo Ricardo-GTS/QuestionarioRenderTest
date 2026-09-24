@@ -129,7 +129,7 @@ def commented_questions_for(user):
     )
 
 
-def register_comment_report(*, comment, reporter, reason_category: str, reason) -> str | None:
+def register_comment_report(*, comment, reporter, reason: str) -> str | None:
     """Devolve a mensagem de erro pro usuario, ou None se registrou."""
     from .models import CommentReport
 
@@ -137,7 +137,7 @@ def register_comment_report(*, comment, reporter, reason_category: str, reason) 
         return "Você não pode reportar o próprio comentário."
     if CommentReport.objects.filter(comment=comment, reporter=reporter).exists():
         return "Você já reportou este comentário."
-    CommentReport.objects.create(comment=comment, reporter=reporter, reason_category=reason_category, reason=reason)
+    CommentReport.objects.create(comment=comment, reporter=reporter, reason=reason)
     return None
 
 

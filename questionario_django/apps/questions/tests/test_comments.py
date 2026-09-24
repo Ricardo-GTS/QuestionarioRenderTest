@@ -153,10 +153,8 @@ def test_comment_rate_limit_per_user(client, setup, settings):
 # --- reporte de comentario e moderacao ---
 
 
-def _report_comment(client, comment, category="Entrega a resposta", reason=""):
-    return client.post(
-        reverse("questions:report_comment", args=[comment.id]), {"reason_category": category, "reason": reason}
-    )
+def _report_comment(client, comment, reason="Entrega a resposta da questao"):
+    return client.post(reverse("questions:report_comment", args=[comment.id]), {"reason": reason})
 
 
 @pytest.mark.django_db
@@ -166,9 +164,10 @@ def test_report_comment_rules_and_moderation(client, setup):
     _comment(other, q, "A resposta e verdadeiro")
     comment = QuestionComment.objects.get()
 
-    # "Outro" sem texto e' recusado
-    resp = _report_comment(client, comment, "Outro", "")
-    assert resp.context["form"].errors.get("reason")
+    # motivo e' sempre obrigatorio (vazio ou so' espacos e' recusado)
+    for empty in ("", "   "):
+        assert _report_comment(client, comment, empty).context["form"].errors.get("reason")
+    assert "reason_category" not in _report_comment(client, comment, "").context["form"].fields
     # nao da pra reportar o proprio
     assert "próprio" in _report_comment(other, comment).context["error"]
     # reporta; segunda vez e' recusada
@@ -196,7 +195,7 @@ def test_keep_reported_comment_rejects_reports(client, setup):
     other, _ = _other_student_client(q)
     _comment(other, q, "Comentario normal")
     comment = QuestionComment.objects.get()
-    _report_comment(client, comment, "Spam ou fora do tema")
+    _report_comment(client, comment, "Parece spam")
     admin = Client()
     admin.force_login(_user("admin@example.com", "10000009"))
     admin.post(reverse("moderation:keep_reported_comment", args=[comment.id]))
@@ -235,9 +234,10 @@ def test_interactions_lists_commented_questions_with_new_badge(client, setup):
 @pytest.mark.django_db
 def test_interactions_my_reports_status(client, setup):
     q = setup["question"]
-    Report.objects.create(question=q, reporter=setup["student"], reason_category="Fora do tema", status="accepted")
+    Report.objects.create(question=q, reporter=setup["student"], reason="Fora do tema da disciplina", status="accepted")
     page = client.get(reverse("accounts:interactions"))
     assert "Aceito — a questão foi removida" in page.content.decode()
+    assert "Fora do tema da disciplina" in page.content.decode()
 
 
 # --- reporte da questao pelo painel do quiz ---
@@ -252,10 +252,16 @@ def test_report_question_panel(client, setup):
 
     resp = client.get(url)
     assert resp.status_code == 200
-    assert "Enviar reporte" in resp.content.decode()
+    html = resp.content.decode()
+    assert "Enviar reporte" in html
+    assert "<select" not in html  # sem menu de motivo, so' o campo de texto
+    # motivo vazio e' recusado
+    resp = client.post(reverse("moderation:report_question", args=[q.id]), {"reason": "  ", "painel": "1"})
+    assert resp.context["form"].errors.get("reason")
+    assert not Report.objects.exists()
     resp = client.post(
         reverse("moderation:report_question", args=[q.id]),
-        {"reason_category": "Resposta incorreta", "reason": "", "painel": "1"},
+        {"reason": "A resposta correta e falso", "painel": "1"},
     )
     assert "Reporte enviado" in resp.content.decode()
     assert Report.objects.filter(question=q, reporter=setup["student"]).count() == 1
@@ -265,6 +271,6 @@ def test_report_question_panel(client, setup):
 @pytest.mark.django_db
 def test_report_requires_login(setup):
     anonymous = Client()
-    resp = anonymous.post(reverse("moderation:report_question", args=[setup["question"].id]), {"reason_category": "Outro"})
+    resp = anonymous.post(reverse("moderation:report_question", args=[setup["question"].id]), {"reason": "qualquer motivo"})
     assert resp.status_code == 302
     assert reverse("accounts:login") in resp.url

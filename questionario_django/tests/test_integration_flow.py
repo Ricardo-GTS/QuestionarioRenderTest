@@ -257,14 +257,14 @@ def test_quiz_report_and_moderation_flow(client, fake_embedding):
     # Aluno reporta a pergunta
     resp = client.post(
         reverse("moderation:report_question", args=[question.id]),
-        {"reason_category": "Pergunta duplicada", "reason": ""},
+        {"reason": "Pergunta duplicada de outra"},
     )
-    assert Report.objects.filter(question=question, reason_category="Pergunta duplicada").exists()
+    assert Report.objects.filter(question=question, reason="Pergunta duplicada de outra").exists()
 
     # Reportar de novo deve falhar (unique constraint / regra de negocio)
     resp = client.post(
         reverse("moderation:report_question", args=[question.id]),
-        {"reason_category": "Fora do tema", "reason": ""},
+        {"reason": "Fora do tema"},
     )
     assert Report.objects.filter(question=question).count() == 1
     client.post(reverse("accounts:logout"))

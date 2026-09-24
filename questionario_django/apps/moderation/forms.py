@@ -3,26 +3,18 @@ from django import forms
 from apps.questions import services
 from apps.questions.forms import NEW_TOPIC_CHOICE
 
-from .models import REASON_CATEGORY_CHOICES
+REASON_MAX_LENGTH = 1000
 
 
 class ReportForm(forms.Form):
-    reason_category = forms.ChoiceField(choices=REASON_CATEGORY_CHOICES, label="Tipo de problema")
     reason = forms.CharField(
-        widget=forms.Textarea,
-        required=False,
+        widget=forms.Textarea(attrs={"rows": 3, "maxlength": REASON_MAX_LENGTH}),
         min_length=3,
+        max_length=REASON_MAX_LENGTH,
+        strip=True,
         label="Motivo",
-        help_text="Obrigatorio quando o tipo de problema for 'Outro'.",
+        help_text="Explique o problema da pergunta (obrigatório).",
     )
-
-    def clean(self):
-        cleaned = super().clean()
-        category = cleaned.get("reason_category")
-        reason = (cleaned.get("reason") or "").strip()
-        if category == "Outro" and not reason:
-            self.add_error("reason", "Descreva o motivo quando o tipo de problema for 'Outro'")
-        return cleaned
 
 
 class QuestionEditForm(forms.Form):

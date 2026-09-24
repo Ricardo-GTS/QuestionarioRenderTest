@@ -15,11 +15,11 @@ def should_flag(report_count: int, threshold: int, current_status: str) -> bool:
     return report_count >= threshold and current_status == QuestionStatus.ACTIVE
 
 
-def register_report(*, question, reporter_id: int, reason, reason_category: str) -> Report:
+def register_report(*, question, reporter_id: int, reason: str) -> Report:
     from apps.questions.models import QuestionStatus
 
     report = Report.objects.create(
-        question=question, reporter_id=reporter_id, reason=reason, reason_category=reason_category
+        question=question, reporter_id=reporter_id, reason=reason
     )
     report_count = Report.objects.filter(question=question).count()
     threshold = get_effective_settings().report_threshold
@@ -225,10 +225,6 @@ def compute_stats() -> dict:
         {"topic": row["topic"], "count": row["c"]}
         for row in Question.objects.values("topic").annotate(c=Count("id")).order_by("-c")
     ]
-    reports_by_category = [
-        {"category": row["reason_category"], "count": row["c"]}
-        for row in Report.objects.values("reason_category").annotate(c=Count("id")).order_by("-c")
-    ]
 
     return {
         "total_users": User.objects.count(),
@@ -239,5 +235,4 @@ def compute_stats() -> dict:
         "total_quiz_attempts": len(attempts),
         "average_score_percent": compute_average_score_percent(attempts),
         "questions_by_topic": questions_by_topic,
-        "reports_by_category": reports_by_category,
     }

@@ -9,7 +9,7 @@
   {% if item.question.pertinence %}<p>Pertinência: {{ item.question.pertinence }}</p>{% endif %}
   <h3>Reportes pendentes ({{ item.reports|length }})</h3>
   {% for report in item.reports %}
-    <p>{{ report.reporter.name }} -- {{ report.reason_category }}{% if report.reason %}: {{ report.reason }}{% endif %}</p>
+    <p>{{ report.reporter.name }}: {{ report.reason|linebreaksbr }}</p>
   {% endfor %}
   <form style="display:inline" hx-post="{% url 'moderation:approve_removal' item.question.id %}" hx-target="#question-{{ item.question.id }}" hx-swap="outerHTML">
     {% csrf_token %}

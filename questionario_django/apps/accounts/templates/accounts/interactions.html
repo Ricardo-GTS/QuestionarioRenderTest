@@ -23,7 +23,7 @@
 {% for report in reports %}
   <div class="card">
     <p><strong>{{ report.question.statement }}</strong></p>
-    <p>{{ report.reason_category }}{% if report.reason %}: {{ report.reason }}{% endif %} · {{ report.created_at|date:"d/m/Y" }}
+    <p>Motivo: {{ report.reason }} · {{ report.created_at|date:"d/m/Y" }}
       · <span class="chip chip--{% if report.status == 'accepted' %}true{% elif report.status == 'rejected' %}false{% else %}neutral{% endif %}">
         {% if report.status == 'accepted' %}Aceito — a questão foi removida{% elif report.status == 'rejected' %}Rejeitado{% else %}Pendente{% endif %}
       </span>

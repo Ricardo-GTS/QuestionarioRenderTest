@@ -1,7 +1,6 @@
 from django import forms
 
 from . import services
-from .models import COMMENT_REPORT_CATEGORY_CHOICES
 
 NEW_TOPIC_CHOICE = "__new_topic__"
 
@@ -56,17 +55,11 @@ class CommentForm(forms.Form):
 
 
 class CommentReportForm(forms.Form):
-    reason_category = forms.ChoiceField(choices=COMMENT_REPORT_CATEGORY_CHOICES, label="Motivo")
     reason = forms.CharField(
-        widget=forms.Textarea(attrs={"rows": 2}),
-        required=False,
+        widget=forms.Textarea(attrs={"rows": 2, "maxlength": 500}),
+        min_length=3,
         max_length=500,
-        label="Detalhes",
-        help_text="Obrigatório quando o motivo for 'Outro'.",
+        strip=True,
+        label="Motivo",
+        help_text="Explique o problema do comentário (obrigatório).",
     )
-
-    def clean(self):
-        cleaned = super().clean()
-        if cleaned.get("reason_category") == "Outro" and not (cleaned.get("reason") or "").strip():
-            self.add_error("reason", "Descreva o motivo quando for 'Outro'.")
-        return cleaned

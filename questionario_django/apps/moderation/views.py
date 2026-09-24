@@ -51,8 +51,7 @@ def report_question(request, question_id):
                 register_report(
                     question=question,
                     reporter_id=request.user.id,
-                    reason=form.cleaned_data.get("reason") or None,
-                    reason_category=form.cleaned_data["reason_category"],
+                    reason=form.cleaned_data["reason"],
                 )
                 sent = True
     else:

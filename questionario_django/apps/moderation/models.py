@@ -8,23 +8,10 @@ class ReportStatus(models.TextChoices):
     REJECTED = "rejected", "Rejeitado"
 
 
-REASON_CATEGORIES = (
-    "Resposta incorreta",
-    "Enunciado ambiguo ou confuso",
-    "Conteudo ofensivo ou inadequado",
-    "Pergunta duplicada",
-    "Fora do tema",
-    "Outro",
-)
-
-REASON_CATEGORY_CHOICES = [(c, c) for c in REASON_CATEGORIES]
-
-
 class Report(models.Model):
     question = models.ForeignKey("questions.Question", on_delete=models.CASCADE, related_name="reports")
     reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reports")
-    reason = models.TextField(null=True, blank=True)
-    reason_category = models.CharField(max_length=60, choices=REASON_CATEGORY_CHOICES)
+    reason = models.TextField()  # motivo escrito pelo aluno, sempre obrigatorio
     status = models.CharField(max_length=20, choices=ReportStatus.choices, default=ReportStatus.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 

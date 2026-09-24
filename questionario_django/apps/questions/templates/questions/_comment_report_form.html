@@ -7,12 +7,7 @@
     {% csrf_token %}
     {% if error %}<p class="chip chip--false">{{ error }}</p>{% endif %}
     <p>
-      <label>{{ form.reason_category.label }}</label>
-      {{ form.reason_category }}
-      {{ form.reason_category.errors }}
-    </p>
-    <p>
-      <label>{{ form.reason.label }}</label>
+      <label for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>
       {{ form.reason }}
       <small>{{ form.reason.help_text }}</small>
       {{ form.reason.errors }}
