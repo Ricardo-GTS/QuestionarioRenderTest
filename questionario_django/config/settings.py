@@ -112,9 +112,11 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Same POSTGRES_* env vars as backend/.env.example; DATABASE_URL is parsed
 # manually to avoid adding a dj-database-url dependency for a single URL.
 
-DATABASE_URL = os.environ.get(
-    "DJANGO_DATABASE_URL",
-    "postgresql://questionario:questionario@localhost:5432/questionario_django",
+# DATABASE_URL tambem e' aceito: e' o nome que o Render usa na documentacao.
+DATABASE_URL = (
+    os.environ.get("DJANGO_DATABASE_URL")
+    or os.environ.get("DATABASE_URL")
+    or "postgresql://questionario:questionario@localhost:5432/questionario_django"
 )
 
 
