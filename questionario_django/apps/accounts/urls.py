@@ -23,6 +23,7 @@ urlpatterns = [
     path("conta/confirmar-email/cancelar", views.cancel_email_change, name="cancel_email_change"),
     path("conta/matricula", views.complete_registration_number, name="complete_registration_number"),
     path("estatisticas", views.my_stats, name="stats"),
+    path("interacoes", views.my_interactions, name="interactions"),
     path("admin/usuarios", views.admin_user_list, name="admin_user_list"),
     path(
         "admin/usuarios/<int:user_id>/matricula",

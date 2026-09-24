@@ -39,3 +39,19 @@ def score_quiz(questions, answers: dict[int, bool]) -> dict:
 
 def record_attempt(*, user_id, score, total) -> QuizAttempt:
     return QuizAttempt.objects.create(user_id=user_id, score=score, total=total)
+
+
+QUIZ_TTL_SECONDS = 24 * 60 * 60
+
+
+def current_position(question_ids: list, answers: dict, position) -> int:
+    """Indice da pergunta atual. Sessoes de antes do botao "Proxima" nao tem
+    quiz_position -- ai a atual e' a primeira sem resposta (como era)."""
+    if position is None:
+        return len(answers)
+    return min(position, len(question_ids))
+
+
+def quiz_expired(started_at, now_ts: float) -> bool:
+    """started_at: timestamp salvo na sessao. Sem ele (sessao antiga), nao vence."""
+    return started_at is not None and now_ts - started_at > QUIZ_TTL_SECONDS

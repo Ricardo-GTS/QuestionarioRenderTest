@@ -18,6 +18,8 @@ QUESTION_IP_CEILING = "1000/m"
 PER_TARGET = "5/m"  # por e-mail tentado (login/cadastro) ou por usuario (codigo na Conta)
 CODE_CONFIRM_PER_USER = "10/m"
 QUESTION_PER_USER = "20/m"
+COMMENT_PER_USER = "10/m"
+COMMENT_REPORT_PER_USER = "10/m"
 
 
 def post_email(group, request) -> str:

@@ -95,6 +95,10 @@ Ao criar uma pergunta: o sistema gera o embedding do enunciado via Ollama, busca
 
 Alem do login por e-mail/senha, ha um botao "Entrar com Google" nas paginas de login e cadastro. E' puramente aditivo: nao muda o fluxo existente, so cria/vincula a conta pelo e-mail da conta Google. Requer criar um OAuth Client ID em https://console.developers.google.com/apis/credentials, configurar `GOOGLE_CLIENT_ID` no `.env`, e adicionar a origem (protocolo+host+porta onde a app roda) na lista de "Authorized JavaScript origins" desse Client ID no Google Cloud Console — sem isso o botao aparece mas o login falha. Sem `GOOGLE_CLIENT_ID` definido, o botao nem aparece -- o resto do app funciona normal.
 
+## Quiz de treino e comentarios
+
+No questionario, o aluno responde e ve na hora se acertou, a resposta correta e as referencias da questao; so' avanca quando clica em **Proxima**. Depois de responder aparecem **Comentarios** (le e escreve, dentro do proprio card) e **Reportar**. Depois do quiz, a aba **Minhas interacoes** lista as questoes em que ele comentou (com selo de comentarios novos) e os reportes que ele fez. Alunos podem reportar comentarios; o admin decide na aba **Comentarios reportados**.
+
 ## Moderacao
 
 Cada reporte em uma pergunta e contabilizado; ao atingir `REPORT_THRESHOLD` reportes, a pergunta muda de status para `reported` e sai do pool de perguntas ativas usadas nos questionarios (sem remocao automatica definitiva). Um usuario so pode reportar a mesma pergunta uma vez. O tipo de problema (lista fechada: resposta incorreta, enunciado ambiguo, conteudo ofensivo, duplicada, fora do tema, outro) e' obrigatorio; o motivo em texto livre e' opcional, exceto quando o tipo e' "outro".

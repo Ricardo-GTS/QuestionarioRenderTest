@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Question, Topic
+from .models import CommentReport, CommentSeen, Question, QuestionComment, Topic
 
 
 @admin.register(Question)
@@ -23,3 +23,21 @@ class QuestionAdmin(admin.ModelAdmin):
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
     search_fields = ("name",)
+
+
+@admin.register(QuestionComment)
+class QuestionCommentAdmin(admin.ModelAdmin):
+    list_display = ("id", "question", "author", "removed", "created_at")
+    list_filter = ("removed",)
+    search_fields = ("text", "author__email", "author__name")
+
+
+@admin.register(CommentReport)
+class CommentReportAdmin(admin.ModelAdmin):
+    list_display = ("id", "comment", "reporter", "reason_category", "status", "created_at")
+    list_filter = ("status", "reason_category")
+
+
+@admin.register(CommentSeen)
+class CommentSeenAdmin(admin.ModelAdmin):
+    list_display = ("user", "question", "last_seen_at")

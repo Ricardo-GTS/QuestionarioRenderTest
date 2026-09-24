@@ -51,3 +51,64 @@ class Topic(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class QuestionComment(models.Model):
+    """Comentario de aluno numa questao. Visivel so' pra quem respondeu a questao no
+    quiz atual, pra quem ja' comentou nela, ou admin (services.can_view_comments).
+    removed=True: ocultado pelo admin (fica guardado pra historico dos reportes)."""
+
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="question_comments")
+    text = models.TextField()
+    removed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["question", "removed"], name="ix_comment_question_removed")]
+
+    def __str__(self):
+        return self.text[:60]
+
+
+class CommentReportStatus(models.TextChoices):
+    PENDING = "pending", "Pendente"
+    ACCEPTED = "accepted", "Aceito"
+    REJECTED = "rejected", "Rejeitado"
+
+
+COMMENT_REPORT_CATEGORIES = (
+    "Ofensivo ou inadequado",
+    "Entrega a resposta",
+    "Spam ou fora do tema",
+    "Outro",
+)
+COMMENT_REPORT_CATEGORY_CHOICES = [(c, c) for c in COMMENT_REPORT_CATEGORIES]
+
+
+class CommentReport(models.Model):
+    comment = models.ForeignKey(QuestionComment, on_delete=models.CASCADE, related_name="reports")
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="comment_reports")
+    reason_category = models.CharField(max_length=60, choices=COMMENT_REPORT_CATEGORY_CHOICES)
+    reason = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=CommentReportStatus.choices, default=CommentReportStatus.PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["comment", "reporter"], name="uq_comment_reports_comment_reporter"),
+        ]
+
+
+class CommentSeen(models.Model):
+    """Ultima vez que o usuario abriu os comentarios da questao -- base do selo "N novos"."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="comments_seen")
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="comments_seen")
+    last_seen_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "question"], name="uq_comment_seen_user_question"),
+        ]

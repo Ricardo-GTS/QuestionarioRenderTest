@@ -1,3 +1,5 @@
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
@@ -26,8 +28,19 @@ from .services import (
 )
 
 
+@login_required
 def report_question(request, question_id):
+    """Modal (pagina de resultado) ou painel dentro do card do quiz (?painel=1 / campo
+    hidden "painel"). O painel so' abre pra questao ja' respondida no quiz atual."""
+    from apps.core.permissions import is_admin_email
+    from apps.quiz.views import question_answered_in_quiz
+
     question = get_object_or_404(Question, pk=question_id)
+    panel = bool(request.GET.get("painel") or request.POST.get("painel"))
+    if panel and not (question_answered_in_quiz(request, question.id) or is_admin_email(request.user.email)):
+        raise PermissionDenied("Responda a questao antes de reportar")
+    template = "moderation/_report_panel.html" if panel else "moderation/_report_modal.html"
+    already_reported = Report.objects.filter(question=question, reporter=request.user).exists()
     sent = False
     if request.method == "POST":
         form = ReportForm(request.POST)
@@ -44,7 +57,11 @@ def report_question(request, question_id):
                 sent = True
     else:
         form = ReportForm()
-    return render(request, "moderation/_report_modal.html", {"form": form, "question": question, "sent": sent})
+    return render(
+        request,
+        template,
+        {"form": form, "question": question, "sent": sent, "already_reported": already_reported and not sent},
+    )
 
 
 def close_report_modal(request):
@@ -210,3 +227,33 @@ def topic_delete(request):
     except TopicError as exc:
         return _render_topic_list(request, error=str(exc))
     return redirect("moderation:topic_list")
+
+
+@admin_required
+def pending_comment_reports(request):
+    from apps.questions.services import list_comments_with_pending_reports
+
+    return render(request, "moderation/comment_reports.html", {"items": list_comments_with_pending_reports()})
+
+
+def _resolve_comment(request, comment_id, *, remove):
+    from apps.questions.models import QuestionComment
+    from apps.questions.services import resolve_comment_report
+
+    comment = get_object_or_404(QuestionComment, pk=comment_id)
+    resolve_comment_report(comment, remove=remove)
+    if request.headers.get("HX-Request"):
+        return HttpResponse("")
+    return redirect("moderation:pending_comment_reports")
+
+
+@admin_required
+@require_POST
+def remove_reported_comment(request, comment_id):
+    return _resolve_comment(request, comment_id, remove=True)
+
+
+@admin_required
+@require_POST
+def keep_reported_comment(request, comment_id):
+    return _resolve_comment(request, comment_id, remove=False)

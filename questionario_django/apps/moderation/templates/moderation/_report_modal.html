@@ -8,18 +8,7 @@
       <p>{{ question.statement }}</p>
       <form hx-post="{% url 'moderation:report_question' question.id %}" hx-target="#report-modal" hx-swap="outerHTML">
         {% csrf_token %}
-        {{ form.non_field_errors }}
-        <p>
-          <label>{{ form.reason_category.label }}</label>
-          {{ form.reason_category }}
-          {{ form.reason_category.errors }}
-        </p>
-        <p>
-          <label>{{ form.reason.label }}</label>
-          {{ form.reason }}
-          <small>{{ form.reason.help_text }}</small>
-          {{ form.reason.errors }}
-        </p>
+        {% include "moderation/_report_form_fields.html" %}
         <button type="submit" class="btn btn-primary">Enviar reporte</button>
         <button type="button" class="btn" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#report-modal" hx-swap="outerHTML">Cancelar</button>
       </form>

@@ -488,6 +488,23 @@ def complete_registration_number(request):
 
 
 @login_required
+def my_interactions(request):
+    """Aba "Minhas interacoes": questoes em que o aluno comentou (com selo de comentarios
+    novos; o painel de comentarios abre ali mesmo) e os reportes de questoes que ele fez."""
+    from apps.moderation.models import Report
+    from apps.questions.services import commented_questions_for
+
+    return render(
+        request,
+        "accounts/interactions.html",
+        {
+            "questions": commented_questions_for(request.user),
+            "reports": Report.objects.filter(reporter=request.user).select_related("question").order_by("-created_at"),
+        },
+    )
+
+
+@login_required
 def my_stats(request):
     from apps.moderation.services import compute_user_reputation
 

@@ -1,0 +1,23 @@
+{% if sent %}
+  <span class="chip chip--true">Reportado. Obrigado!</span>
+{% elif cancelled %}
+  <button type="button" class="btn btn-small" hx-get="{% url 'questions:report_comment' comment.id %}" hx-target="#comment-{{ comment.id }}-report">Reportar</button>
+{% else %}
+  <form class="comment-report" hx-post="{% url 'questions:report_comment' comment.id %}" hx-target="#comment-{{ comment.id }}-report">
+    {% csrf_token %}
+    {% if error %}<p class="chip chip--false">{{ error }}</p>{% endif %}
+    <p>
+      <label>{{ form.reason_category.label }}</label>
+      {{ form.reason_category }}
+      {{ form.reason_category.errors }}
+    </p>
+    <p>
+      <label>{{ form.reason.label }}</label>
+      {{ form.reason }}
+      <small>{{ form.reason.help_text }}</small>
+      {{ form.reason.errors }}
+    </p>
+    <button type="submit" class="btn btn-small btn-primary">Enviar reporte</button>
+    <button type="button" class="btn btn-small" hx-get="{% url 'questions:report_comment' comment.id %}?cancelar=1" hx-target="#comment-{{ comment.id }}-report">Cancelar</button>
+  </form>
+{% endif %}

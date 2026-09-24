@@ -2,12 +2,39 @@
 {% if no_questions %}
   <p>Nao ha perguntas disponiveis no momento. <a href="{% url 'questions:create' %}">Crie uma pergunta</a> para comecar.</p>
 {% else %}
-  <p>Pergunta {{ index }} de {{ total }}</p>
+  <p class="quiz-progress">Pergunta {{ index }} de {{ total }}</p>
   <h2>{{ question.statement }}</h2>
-  <form hx-post="{% url 'quiz:answer' %}" hx-target="#quiz-card" hx-swap="outerHTML">
-    {% csrf_token %}
-    <button type="submit" name="answer" value="true" class="btn-truefalse">Verdadeiro</button>
-    <button type="submit" name="answer" value="false" class="btn-truefalse">Falso</button>
-  </form>
+
+  {% if not answered %}
+    <form hx-post="{% url 'quiz:answer' %}" hx-target="#quiz-card" hx-swap="outerHTML" hx-disabled-elt="#quiz-card button">
+      {% csrf_token %}
+      <input type="hidden" name="question_id" value="{{ question.id }}">
+      <button type="submit" name="answer" value="true" class="btn-truefalse">Verdadeiro</button>
+      <button type="submit" name="answer" value="false" class="btn-truefalse">Falso</button>
+    </form>
+    <p class="quiz-restart"><a href="{% url 'quiz:start' %}?novo=1">Recomeçar questionário</a></p>
+  {% else %}
+    <div class="quiz-feedback">
+      <span class="chip {% if is_correct %}chip--true{% else %}chip--false{% endif %}">
+        {% if is_correct %}Você acertou{% else %}Você errou{% endif %}
+      </span>
+      <p>Sua resposta: <strong>{% if given_answer %}Verdadeiro{% else %}Falso{% endif %}</strong>
+        · Resposta correta: <strong>{% if question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}</strong></p>
+      {% if question.citations_references %}
+        <p class="quiz-references">Citações e referências: {{ question.citations_references|linebreaksbr }}</p>
+      {% endif %}
+    </div>
+
+    <div class="quiz-actions">
+      <form hx-post="{% url 'quiz:next' %}" hx-target="#quiz-card" hx-swap="outerHTML" hx-disabled-elt="#quiz-card button">
+        {% csrf_token %}
+        <input type="hidden" name="question_id" value="{{ question.id }}">
+        <button type="submit" class="btn btn-primary">{% if is_last %}Ver resultado{% else %}Próxima{% endif %}</button>
+      </form>
+      <button type="button" class="btn" hx-get="{% url 'questions:comments_panel' question.id %}" hx-target="#quiz-panel">Comentários ({{ comment_count }})</button>
+      <button type="button" class="btn" hx-get="{% url 'moderation:report_question' question.id %}?painel=1" hx-target="#quiz-panel">Reportar</button>
+    </div>
+    <div id="quiz-panel"></div>
+  {% endif %}
 {% endif %}
 </div>

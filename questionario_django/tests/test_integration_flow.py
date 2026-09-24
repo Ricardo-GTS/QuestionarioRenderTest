@@ -244,7 +244,9 @@ def test_quiz_report_and_moderation_flow(client, fake_embedding):
     assert resp.status_code == 200
     assert resp.context["question"].id == question.id
 
-    resp = client.post(reverse("quiz:answer"), {"answer": "true"})
+    resp = client.post(reverse("quiz:answer"), {"answer": "true", "question_id": question.id})
+    assert resp.context["answered"] and resp.context["is_correct"]
+    resp = client.post(reverse("quiz:next"), {"question_id": question.id})
     assert resp.headers.get("HX-Redirect") == reverse("quiz:result")
 
     resp = client.get(reverse("quiz:result"))

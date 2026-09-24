@@ -1,0 +1,18 @@
+<div class="qpanel" id="report-panel-{{ question.id }}">
+  <div class="qpanel-head">
+    <h3>Reportar pergunta</h3>
+    <button type="button" class="btn" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#report-panel-{{ question.id }}" hx-swap="outerHTML">Fechar</button>
+  </div>
+  {% if sent %}
+    <p class="chip chip--true">Reporte enviado. Obrigado!</p>
+  {% elif already_reported %}
+    <p class="chip chip--neutral">Você já reportou esta pergunta.</p>
+  {% else %}
+    <form hx-post="{% url 'moderation:report_question' question.id %}" hx-target="#report-panel-{{ question.id }}" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="painel" value="1">
+      {% include "moderation/_report_form_fields.html" %}
+      <button type="submit" class="btn btn-primary">Enviar reporte</button>
+    </form>
+  {% endif %}
+</div>
