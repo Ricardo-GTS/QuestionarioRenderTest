@@ -1,41 +1,46 @@
 {% extends "core/base.html" %}
-{% block title %}Admin - Semestres{% endblock %}
+{% block title %}Semestres - Admin{% endblock %}
+{% block page_class %}page--wide{% endblock %}
 {% block content %}
-{% include "core/_admin_nav.html" %}
-<h1>Semestres</h1>
-{% if error %}<p class="chip chip--false">{{ error }}</p>{% endif %}
+{% include "core/_admin_nav.html" with admin_title="Semestres" %}
+{% if error %}<div class="notice notice--danger"><p>{{ error }}</p></div>{% endif %}
 
-<div class="card">
-  <table class="semester-table">
-    <thead><tr><th>Semestre</th><th>Situação</th><th>Alunos</th><th>Questões</th><th>Aberto em</th><th>Encerrado em</th><th></th></tr></thead>
+<div class="surface surface--flush">
+  <table class="table">
+    <thead><tr><th>Semestre</th><th>Situação</th><th class="num">Alunos</th><th class="num">Questões</th><th>Aberto em</th><th>Encerrado em</th><th>Ações</th></tr></thead>
     <tbody>
       {% for row in rows %}
         <tr>
-          <td><strong>{{ row.semester.name }}</strong></td>
-          <td>{% if row.semester.is_active %}<span class="chip chip--true">Ativo</span>{% else %}<span class="chip chip--neutral">Encerrado</span>{% endif %}</td>
-          <td>{{ row.students }}</td>
-          <td>{{ row.questions }}</td>
-          <td>{{ row.semester.opened_at|date:"d/m/Y" }}</td>
-          <td>{{ row.semester.closed_at|date:"d/m/Y"|default:"—" }}</td>
-          <td class="semester-actions">
-            <form method="post" action="{% url 'core:rename_semester' row.semester.id %}" class="rename-form"
-                  onsubmit="return confirm('Renomear o semestre {{ row.semester.name }} para ' + this.name.value + '? Questões, alunos e estatísticas continuam os mesmos.');">
-              {% csrf_token %}
-              <input type="text" name="name" value="{{ row.semester.name }}" pattern="\d{4}\.[12]" size="7" required aria-label="Novo nome do semestre {{ row.semester.name }}">
-              <button type="submit" class="btn btn-small">Renomear</button>
-            </form>
-            <a class="btn btn-small" href="{% url 'core:download_sheet' row.semester.id %}">Baixar planilha</a>
-            <form method="post" action="{% url 'core:regenerate_sheet' row.semester.id %}">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-small">Regenerar planilha</button>
-            </form>
-            {% if not row.semester.is_active %}
-              <form method="post" action="{% url 'core:reactivate_semester' row.semester.id %}"
-                    onsubmit="return confirm('Voltar o semestre {{ row.semester.name }} a ser o ativo? O ativo de agora será encerrado.');">
+          <td data-label="Semestre"><strong>{{ row.semester.name }}</strong></td>
+          <td data-label="Situação">{% if row.semester.is_active %}<span class="tag tag--ok">Ativo</span>{% else %}<span class="tag tag--muted">Encerrado</span>{% endif %}</td>
+          <td class="num" data-label="Alunos">{{ row.students }}</td>
+          <td class="num" data-label="Questões">{{ row.questions }}</td>
+          <td data-label="Aberto em">{{ row.semester.opened_at|date:"d/m/Y" }}</td>
+          <td data-label="Encerrado em">{{ row.semester.closed_at|date:"d/m/Y"|default:"—" }}</td>
+          <td data-label="Ações">
+            <div class="row-actions">
+              <a class="btn btn-small" href="{% url 'core:download_sheet' row.semester.id %}">Baixar planilha</a>
+              <form method="post" action="{% url 'core:regenerate_sheet' row.semester.id %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-small">Reativar</button>
+                <button type="submit" class="btn btn-small btn-ghost">Regenerar planilha</button>
               </form>
-            {% endif %}
+              {% if not row.semester.is_active %}
+                <form method="post" action="{% url 'core:reactivate_semester' row.semester.id %}"
+                      onsubmit="return confirm('Voltar o semestre {{ row.semester.name }} a ser o ativo? O ativo de agora será encerrado.');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-small btn-ghost">Reativar</button>
+                </form>
+              {% endif %}
+            </div>
+            <details class="rename-details">
+              <summary>Renomear</summary>
+              <form method="post" action="{% url 'core:rename_semester' row.semester.id %}" class="rename-form"
+                    onsubmit="return confirm('Renomear o semestre {{ row.semester.name }} para ' + this.name.value + '? Questões, alunos e estatísticas continuam os mesmos.');">
+                {% csrf_token %}
+                <input type="text" name="name" value="{{ row.semester.name }}" pattern="\d{4}\.[12]" required aria-label="Novo nome do semestre {{ row.semester.name }}">
+                <button type="submit" class="btn btn-small">Renomear</button>
+              </form>
+            </details>
           </td>
         </tr>
       {% empty %}
@@ -45,42 +50,42 @@
   </table>
 </div>
 
-<div class="card">
-  <h2>Gerar planilha por período</h2>
-  {% if available %}
-    <p>Questões disponíveis de <strong>{{ available.0|date:"d/m/Y" }}</strong> a <strong>{{ available.1|date:"d/m/Y" }}</strong> (todos os semestres). A planilha inclui a coluna "Semestre".</p>
-    <form method="post" action="{% url 'core:export_range' %}" class="range-form">
-      {% csrf_token %}
-      <label>De <input type="date" name="start" value="{{ range_values.start }}" min="{{ available.0|date:'Y-m-d' }}" max="{{ available.1|date:'Y-m-d' }}" required></label>
-      <label>até <input type="date" name="end" value="{{ range_values.end }}" min="{{ available.0|date:'Y-m-d' }}" max="{{ available.1|date:'Y-m-d' }}" required></label>
-      <button type="submit" class="btn btn-primary">Baixar planilha</button>
-    </form>
-  {% else %}
-    <p>Ainda não há questões para exportar.</p>
-  {% endif %}
-</div>
-
-<div class="card">
-  <h2>Abrir novo semestre</h2>
-  <p>O semestre {% if active %}<strong>{{ active.name }}</strong> será encerrado e ficará guardado para consulta (pelo seletor de semestre no topo do painel){% else %}novo será o primeiro{% endif %}.
-    O novo começa do zero: questões, questionário, estatísticas e checagem de duplicatas só deste semestre. As configurações são copiadas {% if active %}do {{ active.name }}{% else %}dos valores iniciais{% endif %}.
-    Alunos antigos continuam com o mesmo login e verão a opção de participar do novo semestre.</p>
-  <form method="post" action="{% url 'core:open_semester' %}"
-        onsubmit="return confirm('Abrir o semestre ' + this.name.value + '? Os alunos passarão a usar o novo semestre imediatamente.');">
-    {% csrf_token %}
-    <p>
-      <label for="semester-name">Nome do semestre</label>
-      <input type="text" id="semester-name" name="name" value="{{ suggested_name }}" placeholder="2026.2" pattern="\d{4}\.[12]" required>
-    </p>
-    {% if active %}
-      <p><label><input type="checkbox" name="copy_topics" value="1" checked> Copiar a lista de tópicos do {{ active.name }} (sem as questões)</label></p>
+<div class="split">
+  <section class="surface">
+    <h2>Planilha por período</h2>
+    {% if available %}
+      <p class="muted">Questões de <strong>{{ available.0|date:"d/m/Y" }}</strong> a <strong>{{ available.1|date:"d/m/Y" }}</strong>, somando todos os semestres. A planilha inclui a coluna Semestre.</p>
+      <form method="post" action="{% url 'core:export_range' %}" class="range-form">
+        {% csrf_token %}
+        <div><label for="range-start">De</label><input id="range-start" type="date" name="start" value="{{ range_values.start }}" min="{{ available.0|date:'Y-m-d' }}" max="{{ available.1|date:'Y-m-d' }}" required></div>
+        <div><label for="range-end">Até</label><input id="range-end" type="date" name="end" value="{{ range_values.end }}" min="{{ available.0|date:'Y-m-d' }}" max="{{ available.1|date:'Y-m-d' }}" required></div>
+        <button type="submit" class="btn btn-primary">Baixar planilha</button>
+      </form>
+    {% else %}
+      <p class="muted">Ainda não há questões para exportar.</p>
     {% endif %}
-    <div class="backup-reminder">
-      <p><strong>Antes de abrir, faça o backup do banco</strong> no servidor:</p>
-      <pre>scripts/backup_db.sh fim-{{ active.name|default:"semestre" }}</pre>
-      <label><input type="checkbox" name="backup_done" value="1" required> Fiz o backup</label>
-    </div>
-    <button type="submit" class="btn btn-primary">Abrir semestre</button>
-  </form>
+  </section>
+
+  <section class="surface">
+    <h2>Abrir novo semestre</h2>
+    <p class="muted">{% if active %}O semestre {{ active.name }} será encerrado e ficará guardado para consulta.{% else %}Este será o primeiro semestre.{% endif %} O novo começa do zero: questões, treino, estatísticas e checagem de duplicatas. As configurações são copiadas{% if active %} do {{ active.name }}{% endif %}. Alunos antigos mantêm o login e escolhem participar.</p>
+    <form method="post" action="{% url 'core:open_semester' %}"
+          onsubmit="return confirm('Abrir o semestre ' + this.name.value + '? Os alunos passarão a usar o novo semestre imediatamente.');">
+      {% csrf_token %}
+      <div class="field">
+        <label for="semester-name">Nome do semestre</label>
+        <input type="text" id="semester-name" name="name" value="{{ suggested_name }}" placeholder="2026.1" pattern="\d{4}\.[12]" required>
+      </div>
+      {% if active %}
+        <label class="inline-check"><input type="checkbox" name="copy_topics" value="1" checked> Copiar a lista de tópicos do {{ active.name }} (sem as questões)</label>
+      {% endif %}
+      <div class="backup-reminder">
+        <p><strong>Antes de abrir, faça o backup do banco</strong> no servidor:</p>
+        <pre>scripts/backup_db.sh fim-{{ active.name|default:"semestre" }}</pre>
+        <label><input type="checkbox" name="backup_done" value="1" required> Fiz o backup</label>
+      </div>
+      <button type="submit" class="btn btn-primary">Abrir semestre</button>
+    </form>
+  </section>
 </div>
 {% endblock %}

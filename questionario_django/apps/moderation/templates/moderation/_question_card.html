@@ -1,22 +1,27 @@
-{% load status_labels %}
-<div class="card" id="question-{{ item.question.id }}">
-  <p><strong>{{ item.question.statement }}</strong></p>
-  <p>Autor: {{ item.question.author.name }} · Resposta: {% if item.question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}
-    · Tópico: {{ item.question.topic }}
-    · <span class="chip chip--{{ item.question.status|status_chip_kind }}">{{ item.question.status|status_label }}</span>
-  </p>
-  {% if item.question.citations_references %}<p>Citações e referências: {{ item.question.citations_references }}</p>{% endif %}
-  {% if item.question.pertinence %}<p>Pertinência: {{ item.question.pertinence }}</p>{% endif %}
-  <h3>Reportes pendentes ({{ item.reports|length }})</h3>
-  {% for report in item.reports %}
-    <p>{{ report.reporter.name }}: {{ report.reason|linebreaksbr }}</p>
-  {% endfor %}
-  <form style="display:inline" hx-post="{% url 'moderation:approve_removal' item.question.id %}" hx-target="#question-{{ item.question.id }}" hx-swap="outerHTML">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-danger">Aprovar Remocao</button>
-  </form>
-  <form style="display:inline" hx-post="{% url 'moderation:reject_removal' item.question.id %}" hx-target="#question-{{ item.question.id }}" hx-swap="outerHTML">
-    {% csrf_token %}
-    <button type="submit" class="btn">Rejeitar Remocao</button>
-  </form>
-</div>
+<article class="ficha" id="question-{{ item.question.id }}">
+  <p class="ficha__statement">{{ item.question.statement }}</p>
+  <dl class="meta">
+    <div><dt>Autor</dt><dd>{{ item.question.author.name }}</dd></div>
+    <div><dt>Resposta</dt><dd>{% if item.question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}</dd></div>
+    <div><dt>Tópico</dt><dd>{{ item.question.topic }}</dd></div>
+    <div><dt>Situação</dt><dd>{% include "core/_status_tag.html" with status=item.question.status %}</dd></div>
+  </dl>
+  {% if item.question.citations_references %}<p class="references">Referências: {{ item.question.citations_references }}</p>{% endif %}
+  {% if item.question.pertinence %}<p class="references">Pertinência: {{ item.question.pertinence }}</p>{% endif %}
+  <div class="ficha__feedback">
+    <h3>Reportes pendentes ({{ item.reports|length }})</h3>
+    <ul class="report-list">
+      {% for report in item.reports %}<li><strong>{{ report.reporter.name }}</strong>: {{ report.reason|linebreaksbr }}</li>{% endfor %}
+    </ul>
+    <div class="actions">
+      <form hx-post="{% url 'moderation:approve_removal' item.question.id %}" hx-target="#question-{{ item.question.id }}" hx-swap="outerHTML" hx-confirm="Remover esta pergunta e aceitar os reportes?">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Remover pergunta</button>
+      </form>
+      <form hx-post="{% url 'moderation:reject_removal' item.question.id %}" hx-target="#question-{{ item.question.id }}" hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit" class="btn">Manter pergunta</button>
+      </form>
+    </div>
+  </div>
+</article>

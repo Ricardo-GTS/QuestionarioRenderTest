@@ -1,0 +1,6 @@
+{% if google_client_id %}
+  <div class="divider">ou</div>
+  <div id="g_id_onload" data-client_id="{{ google_client_id }}" data-login_uri="{% url 'accounts:google_login' %}"></div>
+  <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-width="360" data-text="continue_with"></div>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+{% endif %}

@@ -25,7 +25,7 @@ def create_question(request):
         try:
             embedding = services.get_embedding(form.cleaned_data["statement"])
         except services.EmbeddingServiceError:
-            error_message = "Servico de embeddings indisponivel, tente novamente em instantes."
+            error_message = "O serviço que compara questões está fora do ar. Tente de novo em instantes."
         else:
             similar_questions = services.find_similar_active_questions(embedding)
             if not similar_questions:
@@ -38,7 +38,7 @@ def create_question(request):
                     pertinence=form.cleaned_data["pertinence"],
                     embedding=embedding,
                 )
-                success_message = "Pergunta criada com sucesso."
+                success_message = "Questão criada."
                 form = QuestionForm()
 
     context = {

@@ -1,0 +1,20 @@
+{% extends "core/base.html" %}
+{% block title %}Perfil - Questionário{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>{{ user.name }}</h1>
+  <p>{{ user.email }}{% if user.registration_number %}<br>Matrícula {{ user.registration_number }}{% endif %}</p>
+</div>
+<div class="surface surface--flush">
+  <nav class="hub" aria-label="Perfil">
+    <a href="{% url 'accounts:interactions' %}"><svg aria-hidden="true"><use href="#i-chat"/></svg><span>Minhas interações<small>Comentários que você fez e seus reportes</small></span></a>
+    <a href="{% url 'accounts:stats' %}"><svg aria-hidden="true"><use href="#i-chart"/></svg><span>Estatísticas<small>Seu desempenho no treino e nas suas questões</small></span></a>
+    <a href="{% url 'accounts:account' %}"><svg aria-hidden="true"><use href="#i-gear"/></svg><span>Conta<small>Nome, e-mail e senha</small></span></a>
+    {% if is_admin %}<a href="{% url 'moderation:dashboard' %}"><svg aria-hidden="true"><use href="#i-shield"/></svg><span>Admin<small>Moderação, semestres e usuários</small></span></a>{% endif %}
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="danger"><svg aria-hidden="true"><use href="#i-logout"/></svg><span>Sair</span></button>
+    </form>
+  </nav>
+</div>
+{% endblock %}

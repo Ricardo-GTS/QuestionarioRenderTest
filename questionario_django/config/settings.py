@@ -90,6 +90,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.admin_flag",
+                "apps.core.context_processors.nav_section",
                 "apps.questions.context_processors.my_questions_badge",
             ],
         },
@@ -223,3 +224,9 @@ RATELIMIT_IP_META_KEY = "apps.core.ratelimits.client_ip"
 # direto (usa REMOTE_ADDR). So' aumentar se houver MESMO um proxy -- senao o cliente
 # consegue forjar o X-Forwarded-For e fugir do rate limit.
 TRUSTED_PROXY_COUNT = int(os.environ.get("TRUSTED_PROXY_COUNT", "0"))
+
+
+# Mensagens: "error" vira "danger" (classe .notice--danger do design).
+from django.contrib.messages import constants as message_constants  # noqa: E402
+
+MESSAGE_TAGS = {message_constants.ERROR: "danger"}

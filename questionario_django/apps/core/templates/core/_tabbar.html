@@ -1,0 +1,6 @@
+<nav class="tabbar" aria-label="Principal">
+  <a href="{% url 'quiz:start' %}"{% if nav == "treinar" %} aria-current="page"{% endif %}><svg aria-hidden="true"><use href="#i-train"/></svg><span>Treinar</span></a>
+  <a href="{% url 'questions:create' %}"{% if nav == "criar" %} aria-current="page"{% endif %}><svg aria-hidden="true"><use href="#i-pencil"/></svg><span>Criar</span></a>
+  <a href="{% url 'questions:mine' %}"{% if nav == "minhas" %} aria-current="page"{% endif %}><svg aria-hidden="true"><use href="#i-stack"/></svg><span>Minhas</span>{% if my_questions_new_comments %}<span class="count" aria-label="{{ my_questions_new_comments }} comentários novos">{{ my_questions_new_comments }}</span>{% endif %}</a>
+  <a href="{% url 'accounts:profile' %}"{% if nav == "perfil" or nav == "interactions" or nav == "stats" or nav == "admin" %} aria-current="page"{% endif %}><svg aria-hidden="true"><use href="#i-user"/></svg><span>Perfil</span></a>
+</nav>

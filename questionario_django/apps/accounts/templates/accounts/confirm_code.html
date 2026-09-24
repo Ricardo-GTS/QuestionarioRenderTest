@@ -1,43 +1,46 @@
 {% extends "core/base.html" %}
-{% block title %}{{ page.title }} - Questionario{% endblock %}
+{% block title %}{{ page.title }} - Questionário{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 {% block content %}
-<h1>{{ page.title }}</h1>
-<div class="card">
+{% include "accounts/_auth_brand.html" %}
+<div class="page-head">
+  <h1>{{ page.title }}</h1>
   <p>Enviamos um código de 6 números para {% if email_masked %}<strong>{{ email_masked }}</strong>{% else %}{{ destination_text }}{% endif %}. {{ page.note }}</p>
-  <p id="code-expiry" data-expires-in="{{ expires_in }}">
+</div>
+<div class="surface">
+  <p id="code-expiry" class="stats-note" data-expires-in="{{ expires_in }}">
     {% if expires_in %}O código vale por {{ ttl_minutes }} minutos a partir do envio.{% else %}O código expirou. Peça um novo código.{% endif %}
   </p>
-
   <form method="post" action="{% url page.confirm_url %}">
     {% csrf_token %}
     {{ form.non_field_errors }}
     {% for field in form %}
-      <p>
+      <div class="field">
         <label for="{{ field.id_for_label }}">{{ field.label }}</label>
         {{ field }}
         {{ field.errors }}
-      </p>
+      </div>
     {% endfor %}
-    <button type="submit" class="btn btn-primary">Confirmar</button>
+    <button type="submit" class="btn btn-primary btn-block">Confirmar</button>
   </form>
-
-  <form method="post" action="{% url page.resend_url %}">
-    {% csrf_token %}
-    <button type="submit" class="btn" id="resend-button" data-resend-in="{{ resend_in }}"{% if resend_in %} disabled{% endif %}>
-      {% if resend_in %}Reenviar em {{ resend_in }} s{% else %}Reenviar código{% endif %}
-    </button>
-  </form>
-
-  {% if page.back_url %}
-    <p><a href="{% url page.back_url %}{{ page.back_query }}">{{ page.back_label }}</a></p>
-  {% endif %}
-  {% if page.cancel_url %}
-    <form method="post" action="{% url page.cancel_url %}">
+  <div class="actions">
+    <form method="post" action="{% url page.resend_url %}">
       {% csrf_token %}
-      <button type="submit" class="btn">{{ page.cancel_label }}</button>
+      <button type="submit" class="btn btn-small" id="resend-button" data-resend-in="{{ resend_in }}"{% if resend_in %} disabled{% endif %}>
+        {% if resend_in %}Reenviar em {{ resend_in }} s{% else %}Reenviar código{% endif %}
+      </button>
     </form>
-  {% endif %}
-  <p><small>Não recebeu? Confira a caixa de spam.</small></p>
+    {% if page.cancel_url %}
+      <form method="post" action="{% url page.cancel_url %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost btn-small">{{ page.cancel_label }}</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+<div class="auth-alt">
+  {% if page.back_url %}<p><a href="{% url page.back_url %}{{ page.back_query }}">{{ page.back_label }}</a></p>{% endif %}
+  <p>Não recebeu? Confira a caixa de spam.</p>
 </div>
 
 <script>

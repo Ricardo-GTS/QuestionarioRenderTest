@@ -1,28 +1,31 @@
 {% extends "core/base.html" %}
-{% block title %}Admin - Comentarios Reportados{% endblock %}
+{% block title %}Comentários reportados - Admin{% endblock %}
+{% block page_class %}page--wide{% endblock %}
 {% block content %}
-{% include "core/_admin_nav.html" %}
-<h1>Comentários reportados</h1>
+{% include "core/_admin_nav.html" with admin_title="Comentários reportados" %}
+<div class="section-list">
 {% for item in items %}
-  <div class="card" id="reported-comment-{{ item.comment.id }}">
-    <p class="comment-meta">Questão: {{ item.comment.question.statement }}</p>
-    <p><strong>{{ item.comment.author.name }}</strong> ({{ item.comment.author.email }}) · {{ item.comment.created_at|date:"d/m/Y H:i" }}
-      {% if item.comment.removed %}<span class="chip chip--neutral">já removido</span>{% endif %}</p>
-    <p class="comment-text">{{ item.comment.text|linebreaksbr }}</p>
+  <article class="surface" id="reported-comment-{{ item.comment.id }}">
+    <p class="references">Na questão: {{ item.comment.question.statement }}</p>
+    <p class="comment-meta"><strong>{{ item.comment.author.name }}</strong><span>{{ item.comment.author.email }}</span><time>{{ item.comment.created_at|date:"d/m/Y, H:i" }}</time>{% if item.comment.removed %}<span class="tag tag--muted">já removido</span>{% endif %}</p>
+    <blockquote class="quote">{{ item.comment.text|linebreaksbr }}</blockquote>
     <h3>Reportes pendentes ({{ item.reports|length }})</h3>
-    {% for report in item.reports %}
-      <p>{{ report.reporter.name }}: {{ report.reason|linebreaksbr }}</p>
-    {% endfor %}
-    <form style="display:inline" hx-post="{% url 'moderation:remove_reported_comment' item.comment.id %}" hx-target="#reported-comment-{{ item.comment.id }}" hx-swap="outerHTML">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-danger">Remover comentário</button>
-    </form>
-    <form style="display:inline" hx-post="{% url 'moderation:keep_reported_comment' item.comment.id %}" hx-target="#reported-comment-{{ item.comment.id }}" hx-swap="outerHTML">
-      {% csrf_token %}
-      <button type="submit" class="btn">Manter</button>
-    </form>
-  </div>
+    <ul class="report-list">
+      {% for report in item.reports %}<li><strong>{{ report.reporter.name }}</strong>: {{ report.reason|linebreaksbr }}</li>{% endfor %}
+    </ul>
+    <div class="actions">
+      <form hx-post="{% url 'moderation:remove_reported_comment' item.comment.id %}" hx-target="#reported-comment-{{ item.comment.id }}" hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Remover comentário</button>
+      </form>
+      <form hx-post="{% url 'moderation:keep_reported_comment' item.comment.id %}" hx-target="#reported-comment-{{ item.comment.id }}" hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit" class="btn">Manter</button>
+      </form>
+    </div>
+  </article>
 {% empty %}
-  <p>Nenhum comentário com reporte pendente.</p>
+  <div class="empty"><strong>Nenhum comentário com reporte pendente.</strong></div>
 {% endfor %}
+</div>
 {% endblock %}

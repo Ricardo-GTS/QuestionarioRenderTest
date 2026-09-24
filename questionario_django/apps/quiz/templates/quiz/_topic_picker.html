@@ -1,20 +1,22 @@
-<div class="qpanel" id="topic-picker">
+<div class="qpanel surface" id="topic-picker">
   <div class="qpanel-head">
     <h3>Escolher tópicos</h3>
-    <button type="button" class="btn" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#topic-picker" hx-swap="outerHTML">Cancelar</button>
+    <button type="button" class="btn btn-ghost btn-small" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#topic-picker" hx-swap="outerHTML">Cancelar</button>
   </div>
   {% if has_answers %}<p class="stats-note">O treino atual recomeça do início.</p>{% endif %}
-  {% if error %}<p class="chip chip--false">{{ error }}</p>{% endif %}
+  {% if error %}<div class="notice notice--danger"><p>{{ error }}</p></div>{% endif %}
   {% if counts %}
     <form hx-post="{% url 'quiz:choose_topics' %}" hx-target="#topic-picker" hx-swap="outerHTML">
       {% csrf_token %}
       <div class="topic-checklist">
         {% for topic, n in counts %}
-          <label><input type="checkbox" name="topico" value="{{ topic }}"{% if topic in selected %} checked{% endif %}> {{ topic }} <span class="topic-value">({{ n }})</span></label>
+          <label><input type="checkbox" name="topico" value="{{ topic }}"{% if topic in selected %} checked{% endif %}><span>{{ topic }} <span class="topic-value">({{ n }})</span></span></label>
         {% endfor %}
       </div>
-      <button type="submit" class="btn btn-primary">Treinar os tópicos marcados</button>
-      <button type="submit" name="todos" value="1" class="btn" formnovalidate>Todos os tópicos</button>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Treinar os tópicos marcados</button>
+        <button type="submit" name="todos" value="1" class="btn" formnovalidate>Todos os tópicos</button>
+      </div>
     </form>
   {% else %}
     <p>Não há questões disponíveis para treinar agora.</p>

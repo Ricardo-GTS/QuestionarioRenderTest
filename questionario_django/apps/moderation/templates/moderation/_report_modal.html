@@ -1,16 +1,18 @@
-<div id="report-modal" style="position:fixed;inset:0;background:rgba(22,36,28,0.5);display:flex;align-items:center;justify-content:center;padding:1em;z-index:10;">
-  <div class="card" style="max-width:420px;background:white;">
+<div id="report-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
+  <div class="surface">
     {% if sent %}
-      <p class="chip chip--true">Reporte enviado. Obrigado!</p>
-      <button type="button" class="btn" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#report-modal" hx-swap="outerHTML">Fechar</button>
+      <div class="notice notice--success"><p>Reporte enviado. Obrigado! O professor vai analisar.</p></div>
+      <div class="actions"><button type="button" class="btn" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#report-modal" hx-swap="outerHTML">Fechar</button></div>
     {% else %}
-      <h2>Reportar pergunta</h2>
-      <p>{{ question.statement }}</p>
+      <h2 id="report-modal-title">Reportar pergunta</h2>
+      <p class="muted">{{ question.statement }}</p>
       <form hx-post="{% url 'moderation:report_question' question.id %}" hx-target="#report-modal" hx-swap="outerHTML">
         {% csrf_token %}
         {% include "moderation/_report_form_fields.html" %}
-        <button type="submit" class="btn btn-primary">Enviar reporte</button>
-        <button type="button" class="btn" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#report-modal" hx-swap="outerHTML">Cancelar</button>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Enviar reporte</button>
+          <button type="button" class="btn btn-ghost" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#report-modal" hx-swap="outerHTML">Cancelar</button>
+        </div>
       </form>
     {% endif %}
   </div>

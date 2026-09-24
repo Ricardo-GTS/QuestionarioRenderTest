@@ -1,8 +1,9 @@
 {% extends "core/base.html" %}
-{% block title %}Nenhum semestre aberto - Questionario{% endblock %}
+{% block title %}Nenhum semestre aberto - Questionário{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 {% block content %}
-<h1>Nenhum semestre aberto</h1>
-<div class="card">
-  <p>O sistema ainda não tem um semestre aberto. Fale com o professor.</p>
+<div class="empty">
+  <strong>Nenhum semestre aberto</strong>
+  <p>O sistema ainda não tem um semestre aberto. Fale com o professor da disciplina.</p>
 </div>
 {% endblock %}

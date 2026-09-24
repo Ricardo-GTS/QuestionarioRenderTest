@@ -1,26 +1,31 @@
 {% extends "core/base.html" %}
-{% block title %}Admin - Visao Geral{% endblock %}
+{% block title %}Visão geral - Admin{% endblock %}
+{% block page_class %}page--wide{% endblock %}
 {% block content %}
-{% include "core/_admin_nav.html" %}
-<h1>Visao Geral</h1>
-<div class="card">
-  <p>Usuarios: <strong>{{ stats.total_users }}</strong></p>
-  <p>Perguntas ativas: <strong>{{ stats.active_questions }}</strong></p>
-  <p>Perguntas reportadas: <strong>{{ stats.reported_questions }}</strong></p>
-  <p>Perguntas removidas: <strong>{{ stats.removed_questions }}</strong></p>
-  <p>Total de reportes: <strong>{{ stats.total_reports }}</strong></p>
-  <p>Tentativas de questionario: <strong>{{ stats.total_quiz_attempts }}</strong></p>
-  <p>Taxa media de acerto:
-    <strong>{% if stats.average_score_percent is not None %}{{ stats.average_score_percent|floatformat:1 }}%{% else %}-{% endif %}</strong>
-  </p>
-</div>
+{% include "core/_admin_nav.html" with admin_title="Visão geral" %}
+<section class="stat-grid" aria-label="Resumo">
+  <div class="stat-tile"><p class="stat-label">Alunos</p><p class="stat-value">{{ stats.total_users }}</p></div>
+  <div class="stat-tile"><p class="stat-label">Perguntas ativas</p><p class="stat-value">{{ stats.active_questions }}</p></div>
+  <div class="stat-tile"><p class="stat-label">Em análise</p><p class="stat-value">{{ stats.reported_questions }}</p></div>
+  <div class="stat-tile"><p class="stat-label">Removidas</p><p class="stat-value">{{ stats.removed_questions }}</p></div>
+  <div class="stat-tile"><p class="stat-label">Reportes</p><p class="stat-value">{{ stats.total_reports }}</p></div>
+  <div class="stat-tile"><p class="stat-label">Treinos concluídos</p><p class="stat-value">{{ stats.total_quiz_attempts }}</p></div>
+  <div class="stat-tile"><p class="stat-label">Taxa média de acerto</p><p class="stat-value">{% if stats.average_score_percent is not None %}{{ stats.average_score_percent|floatformat:0 }}%{% else %}—{% endif %}</p></div>
+</section>
 
-<div class="card">
+<section class="surface">
   <h2>Perguntas por tópico</h2>
-  {% for row in stats.questions_by_topic %}
-    <p>{{ row.topic }}: {{ row.count }}</p>
-  {% empty %}
-    <p>Nenhuma pergunta cadastrada.</p>
-  {% endfor %}
-</div>
+  {% if stats.questions_by_topic %}
+    <table class="table">
+      <thead><tr><th>Tópico</th><th class="num">Perguntas</th></tr></thead>
+      <tbody>
+      {% for row in stats.questions_by_topic %}
+        <tr><td data-label="Tópico">{{ row.topic }}</td><td class="num" data-label="Perguntas">{{ row.count }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty"><strong>Nenhuma pergunta cadastrada neste semestre.</strong></div>
+  {% endif %}
+</section>
 {% endblock %}

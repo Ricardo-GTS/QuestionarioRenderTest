@@ -29,14 +29,14 @@ from .models import EmailChangeRequest, PendingRegistration, ReauthRequest, User
 from .services import verify_google_id_token
 
 
-REGISTRATION_NUMBER_TAKEN = "Ja existe uma conta com essa matricula"
+REGISTRATION_NUMBER_TAKEN = "Já existe uma conta com essa matrícula"
 
 
 def _registration_number_taken(registration_number, exclude_pk=None) -> bool:
     return User.objects.filter(registration_number=registration_number).exclude(pk=exclude_pk).exists()
 
 
-EMAIL_TAKEN = "Ja existe uma conta com esse e-mail"
+EMAIL_TAKEN = "Já existe uma conta com esse e-mail"
 PENDING_SESSION_KEY = "pending_registration_id"
 
 CODE_ERRORS = {
@@ -576,8 +576,8 @@ def admin_delete_user(request, user_id):
     target = get_object_or_404(User, pk=user_id)
     if target.pk == request.user.pk:
         if request.headers.get("HX-Request"):
-            return HttpResponse("Nao e' possivel excluir a propria conta", status=400)
-        messages.error(request, "Nao e' possivel excluir a propria conta")
+            return HttpResponse("Não é possível excluir a própria conta", status=400)
+        messages.error(request, "Não é possível excluir a própria conta")
         return redirect("accounts:admin_user_list")
     from .services import delete_user_everywhere
 
@@ -600,3 +600,10 @@ def join_semester(request):
         messages.success(request, f"Bem-vindo ao semestre {semester.name}!")
         return redirect(settings.LOGIN_REDIRECT_URL)
     return render(request, "accounts/join_semester.html", {"semester": semester})
+
+
+@login_required
+def profile(request):
+    """Aba "Perfil" da barra de baixo (celular): reune o que no computador fica na barra
+    do topo e no menu da conta -- Interacoes, Estatisticas, Conta, Admin e Sair."""
+    return render(request, "accounts/profile.html")

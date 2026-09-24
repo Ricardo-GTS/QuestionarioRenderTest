@@ -95,6 +95,10 @@ Ao criar uma pergunta: o sistema gera o embedding do enunciado via Ollama, busca
 
 Alem do login por e-mail/senha, ha um botao "Entrar com Google" nas paginas de login e cadastro. E' puramente aditivo: nao muda o fluxo existente, so cria/vincula a conta pelo e-mail da conta Google. Requer criar um OAuth Client ID em https://console.developers.google.com/apis/credentials, configurar `GOOGLE_CLIENT_ID` no `.env`, e adicionar a origem (protocolo+host+porta onde a app roda) na lista de "Authorized JavaScript origins" desse Client ID no Google Cloud Console — sem isso o botao aparece mas o login falha. Sem `GOOGLE_CLIENT_ID` definido, o botao nem aparece -- o resto do app funciona normal.
 
+## Interface
+
+Visual "Caderno de estudo": as questoes aparecem como fichas pautadas; o resto da interface usa superficies lisas. Modo escuro segue a configuracao do aparelho. No celular a navegacao fica numa barra embaixo (Treinar, Criar, Minhas, Perfil); no computador, no topo, com o menu da conta. No Treinar, as teclas V e F respondem e Enter vai para a proxima. O sistema de design (cores, tipografia, componentes) esta em `apps/core/static/core/css/` e as regras de uso no `CLAUDE.md`.
+
 ## Quiz de treino e comentarios
 
 Na pagina **Treinar** (menu; URL `/quiz`) o treino comeca direto com todos os topicos; pelo botao **Escolher topicos** o aluno pode treinar so' os topicos que marcar. Ele responde e ve na hora se acertou, a resposta correta e as referencias da questao; so' avanca quando clica em **Proxima**. Depois de responder aparecem **Comentarios** (le e escreve, dentro do proprio card) e **Reportar**. Depois do treino, a aba **Minhas interacoes** lista as questoes em que ele comentou (com selo de comentarios novos) e os reportes que ele fez. Alunos podem reportar comentarios; o admin decide na aba **Comentarios reportados**.

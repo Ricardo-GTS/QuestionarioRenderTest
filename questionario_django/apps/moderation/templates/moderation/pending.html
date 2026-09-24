@@ -1,11 +1,14 @@
 {% extends "core/base.html" %}
-{% block title %}Admin - Moderacao{% endblock %}
+{% block title %}Moderação - Admin{% endblock %}
+{% block page_class %}page--wide{% endblock %}
 {% block content %}
-{% include "core/_admin_nav.html" %}
-<h1>Moderacao</h1>
+{% include "core/_admin_nav.html" with admin_title="Moderação" %}
+<p class="muted">Perguntas com reporte pendente. Uma decisão resolve a pergunta e todos os reportes dela.</p>
+<div class="section-list">
 {% for item in items %}
   {% include "moderation/_question_card.html" %}
 {% empty %}
-  <p>Nenhuma pergunta com reportes pendentes.</p>
+  <div class="empty"><strong>Nenhuma pergunta com reporte pendente.</strong><p>Quando um aluno reportar uma pergunta, ela aparece aqui.</p></div>
 {% endfor %}
+</div>
 {% endblock %}

@@ -1,13 +1,17 @@
-<div class="card" id="question-{{ question.id }}">
-  <p><strong>{{ question.statement }}</strong></p>
-  <p>Autor: {{ question.author.name }} · Resposta: {% if question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}
-    · Tópico: {{ question.topic }}
-  </p>
-  {% if question.citations_references %}<p>Citações e referências: {{ question.citations_references }}</p>{% endif %}
-  {% if question.pertinence %}<p>Pertinência: {{ question.pertinence }}</p>{% endif %}
-  <button type="button" class="btn" hx-get="{% url 'moderation:edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">Editar</button>
-  <form style="display:inline" hx-post="{% url 'moderation:reactivate_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-primary">Reativar</button>
-  </form>
-</div>
+<article class="ficha ficha--compact" id="question-{{ question.id }}">
+  <p class="ficha__statement">{{ question.statement }}</p>
+  <dl class="meta">
+    <div><dt>Autor</dt><dd>{{ question.author.name }}</dd></div>
+    <div><dt>Resposta</dt><dd>{% if question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}</dd></div>
+    <div><dt>Tópico</dt><dd>{{ question.topic }}</dd></div>
+  </dl>
+  {% if question.citations_references %}<p class="references">Referências: {{ question.citations_references }}</p>{% endif %}
+  {% if question.pertinence %}<p class="references">Pertinência: {{ question.pertinence }}</p>{% endif %}
+  <div class="actions">
+    <button type="button" class="btn" hx-get="{% url 'moderation:edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">Editar</button>
+    <form hx-post="{% url 'moderation:reactivate_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Reativar</button>
+    </form>
+  </div>
+</article>

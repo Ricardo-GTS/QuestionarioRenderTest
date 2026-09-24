@@ -24,6 +24,7 @@ urlpatterns = [
     path("semestre/participar", views.join_semester, name="join_semester"),
     path("conta/matricula", views.complete_registration_number, name="complete_registration_number"),
     path("estatisticas", views.my_stats, name="stats"),
+    path("perfil", views.profile, name="profile"),
     path("interacoes", views.my_interactions, name="interactions"),
     path("admin/usuarios", views.admin_user_list, name="admin_user_list"),
     path(

@@ -1,36 +1,30 @@
 {% extends "core/base.html" %}
-{% block title %}Entrar - Questionario{% endblock %}
+{% block title %}Entrar - Questionário{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 {% block content %}
-<h1>Entrar</h1>
-<div class="card">
-  <form method="post" action="{% url 'accounts:login' %}">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    <p>
-      <label for="id_email">E-mail</label>
-      {{ form.email }}
-      {{ form.email.errors }}
-    </p>
-    <p>
-      <label for="id_password">Senha</label>
-      {{ form.password }}
-      {{ form.password.errors }}
-    </p>
-    <button type="submit" class="btn btn-primary">Entrar</button>
-  </form>
+{% include "accounts/_auth_brand.html" %}
+<div class="page-head">
+  <h1>Entrar</h1>
+  <p>Treine com as questões de Verdadeiro ou Falso criadas pela turma.</p>
 </div>
-
-<div class="card">
-  {% if google_client_id %}
-    <div id="g_id_onload"
-         data-client_id="{{ google_client_id }}"
-         data-login_uri="{% url 'accounts:google_login' %}">
-    </div>
-    <div class="g_id_signin" data-type="standard"></div>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-  {% endif %}
+<form class="surface" method="post" action="{% url 'accounts:login' %}">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="field">
+    <label for="id_email">E-mail</label>
+    {{ form.email }}
+    {{ form.email.errors }}
+  </div>
+  <div class="field">
+    <label for="id_password">Senha</label>
+    {{ form.password }}
+    {{ form.password.errors }}
+  </div>
+  <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+  {% include "accounts/_google_button.html" %}
+</form>
+<div class="auth-alt">
+  <p><a href="{% url 'accounts:password_reset_request' %}">Esqueci minha senha</a></p>
+  <p>Ainda não tem conta? <a href="{% url 'accounts:register' %}">Criar conta</a></p>
 </div>
-
-<p><a href="{% url 'accounts:password_reset_request' %}">Esqueci minha senha</a></p>
-<p>Nao tem conta? <a href="{% url 'accounts:register' %}">Cadastre-se</a></p>
 {% endblock %}

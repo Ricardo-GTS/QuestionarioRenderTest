@@ -1,6 +1,8 @@
 {% extends "core/base.html" %}
-{% block title %}Treinar - Questionario{% endblock %}
+{% load static %}
+{% block title %}Treinar - Questionário{% endblock %}
+{% block extra_head %}<script src="{% static 'quiz/quiz.js' %}" defer></script>{% endblock %}
 {% block content %}
-<h1>Treinar</h1>
+<h1 class="visually-hidden">Treinar</h1>
 {% include "quiz/_question.html" %}
 {% endblock %}

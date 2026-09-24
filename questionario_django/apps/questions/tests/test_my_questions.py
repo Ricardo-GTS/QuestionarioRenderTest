@@ -196,7 +196,7 @@ def test_new_badges_on_page_and_menu(author_client):
     by_statement = {q.statement: q.new_count for q in resp.context["page"]}
     assert by_statement == {"Q um": 0, "Q dois": 1}
     assert resp.context["my_questions_new_comments"] == 1
-    assert "Minhas Questões" in resp.content.decode()
+    assert "Minhas questões" in resp.content.decode()
 
     client.get(reverse("questions:comments_panel", args=[q2.id]))  # abrir zera
     assert _page(client).context["my_questions_new_comments"] == 0

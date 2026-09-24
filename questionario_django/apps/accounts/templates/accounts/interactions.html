@@ -1,35 +1,53 @@
 {% extends "core/base.html" %}
-{% block title %}Minhas Interações - Questionario{% endblock %}
+{% block title %}Minhas interações - Questionário{% endblock %}
 {% block content %}
-<h1>Minhas Interações</h1>
+<div class="page-head">
+  <h1>Minhas interações</h1>
+  <p>As questões em que você comentou e os reportes que você fez.</p>
+</div>
 
 <h2>Questões que comentei</h2>
+<div class="section-list">
 {% for question in questions %}
-  <div class="card" id="interaction-{{ question.id }}">
-    <p><strong>{{ question.statement }}</strong></p>
-    <p>Resposta correta: <strong>{% if question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}</strong>
-      · {{ question.comment_count }} comentário{{ question.comment_count|pluralize }}
-      {% if question.new_count %}<span class="chip chip--accent badge-new">{{ question.new_count }} novo{{ question.new_count|pluralize }}</span>{% endif %}
-    </p>
-    <button type="button" class="btn" hx-get="{% url 'questions:comments_panel' question.id %}" hx-target="#interaction-panel-{{ question.id }}"
-            hx-on::after-request="var b=this.closest('.card').querySelector('.badge-new'); if(b) b.remove();">Ver comentários</button>
+  <article class="ficha ficha--compact" id="interaction-{{ question.id }}">
+    <p class="ficha__statement">{{ question.statement }}</p>
+    <dl class="meta">
+      <div><dt>Resposta correta</dt><dd>{% if question.correct_answer %}Verdadeiro{% else %}Falso{% endif %}</dd></div>
+      <div><dt>Comentários</dt><dd>{{ question.comment_count }}</dd></div>
+    </dl>
+    <div class="actions">
+      <button type="button" class="btn" hx-get="{% url 'questions:comments_panel' question.id %}" hx-target="#interaction-panel-{{ question.id }}"
+              hx-on::after-request="var b=this.querySelector('.badge-new'); if(b) b.remove();"><svg aria-hidden="true"><use href="#i-chat"/></svg>Ver comentários{% if question.new_count %} <span class="count badge-new">{{ question.new_count }} novo{{ question.new_count|pluralize }}</span>{% endif %}</button>
+    </div>
     <div id="interaction-panel-{{ question.id }}"></div>
-  </div>
+  </article>
 {% empty %}
-  <p>Você ainda não comentou em nenhuma questão. Depois de responder uma questão no <a href="{% url 'quiz:start' %}">treino</a>, use o botão "Comentários".</p>
+  <div class="empty">
+    <strong>Você ainda não comentou em nenhuma questão.</strong>
+    <p>Depois de responder uma questão no treino, use o botão Comentários para tirar uma dúvida ou deixar uma dica.</p>
+    <a class="btn btn-primary" href="{% url 'quiz:start' %}">Treinar</a>
+  </div>
 {% endfor %}
+</div>
 
-<h2>Meus reportes</h2>
-{% for report in reports %}
-  <div class="card">
-    <p><strong>{{ report.question.statement }}</strong></p>
-    <p>Motivo: {{ report.reason }} · {{ report.created_at|date:"d/m/Y" }}
-      · <span class="chip chip--{% if report.status == 'accepted' %}true{% elif report.status == 'rejected' %}false{% else %}neutral{% endif %}">
-        {% if report.status == 'accepted' %}Aceito — a questão foi removida{% elif report.status == 'rejected' %}Rejeitado{% else %}Pendente{% endif %}
-      </span>
-    </p>
-  </div>
-{% empty %}
-  <p>Você ainda não reportou nenhuma questão.</p>
-{% endfor %}
+<h2 class="section-title">Meus reportes</h2>
+{% if reports %}
+<div class="surface surface--flush">
+  <table class="table">
+    <thead><tr><th>Questão</th><th>Motivo</th><th>Data</th><th>Situação</th></tr></thead>
+    <tbody>
+    {% for report in reports %}
+      <tr>
+        <td data-label="Questão">{{ report.question.statement }}</td>
+        <td data-label="Motivo">{{ report.reason }}</td>
+        <td data-label="Data">{{ report.created_at|date:"d/m/Y" }}</td>
+        <td data-label="Situação">{% include "core/_status_tag.html" with status=report.status %}{% if report.status == 'accepted' %}<br><small>Aceito: a questão foi removida</small>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="empty"><strong>Você ainda não reportou nenhuma questão.</strong><p>Achou um erro numa questão do treino? Use o botão Reportar depois de responder.</p></div>
+{% endif %}
 {% endblock %}

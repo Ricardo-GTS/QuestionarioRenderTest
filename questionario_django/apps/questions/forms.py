@@ -6,7 +6,11 @@ NEW_TOPIC_CHOICE = "__new_topic__"
 
 
 class QuestionForm(forms.Form):
-    statement = forms.CharField(widget=forms.Textarea, min_length=3, label="Enunciado")
+    statement = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 3, "placeholder": "Ex.: No Scrum, o Product Owner prioriza o backlog do produto."}),
+        min_length=3,
+        label="Enunciado",
+    )
     correct_answer = forms.TypedChoiceField(
         choices=[("true", "Verdadeiro"), ("false", "Falso")],
         coerce=lambda value: value == "true",
@@ -18,18 +22,18 @@ class QuestionForm(forms.Form):
         max_length=120,
         required=False,
         label="Novo tópico",
-        help_text="Obrigatorio quando 'Novo Tópico' estiver selecionado acima.",
+        help_text="Obrigatório quando “Novo tópico” estiver selecionado acima.",
     )
-    citations_references = forms.CharField(widget=forms.Textarea, label="Citações e referências")
+    citations_references = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), label="Citações e referências")
     pertinence = forms.CharField(
-        widget=forms.Textarea,
+        widget=forms.Textarea(attrs={"rows": 2}),
         label="Pertinência",
         help_text="Por que essa pergunta é relevante para uma avaliação?",
     )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["topic"].choices = [(NEW_TOPIC_CHOICE, "Novo Tópico")] + [
+        self.fields["topic"].choices = [(NEW_TOPIC_CHOICE, "Novo tópico")] + [
             (topic, topic) for topic in services.list_topic_names()
         ]
 

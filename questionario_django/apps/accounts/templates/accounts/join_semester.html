@@ -1,17 +1,22 @@
 {% extends "core/base.html" %}
-{% block title %}Semestre {{ semester.name }} - Questionario{% endblock %}
+{% block title %}Semestre {{ semester.name }} - Questionário{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 {% block content %}
-<h1>Semestre {{ semester.name }}</h1>
-<div class="card">
-  <p>Um novo semestre começou. Você ainda não participa do semestre <strong>{{ semester.name }}</strong>.</p>
-  <p>Ao participar, você começa do zero neste semestre: questionário, questões e estatísticas são deste semestre. Seu login e sua senha continuam os mesmos.</p>
-  <form method="post" action="{% url 'accounts:join_semester' %}" style="display:inline">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-primary">Participar do semestre {{ semester.name }}</button>
-  </form>
-  <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
-    {% csrf_token %}
-    <button type="submit" class="btn">Sair</button>
-  </form>
+<div class="page-head">
+  <h1>Semestre {{ semester.name }}</h1>
+  <p>Um novo semestre começou e você ainda não participa dele.</p>
+</div>
+<div class="surface">
+  <p>Ao participar, você começa do zero neste semestre: treino, questões e estatísticas são do semestre {{ semester.name }}. Seu login e sua senha continuam os mesmos.</p>
+  <div class="actions">
+    <form method="post" action="{% url 'accounts:join_semester' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Participar do semestre {{ semester.name }}</button>
+    </form>
+    <form method="post" action="{% url 'accounts:logout' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-ghost">Sair</button>
+    </form>
+  </div>
 </div>
 {% endblock %}

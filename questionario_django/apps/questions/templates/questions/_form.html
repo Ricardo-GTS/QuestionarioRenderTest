@@ -1,64 +1,63 @@
-<div id="question-form-wrapper" class="card">
-  {% if success_message %}<p class="chip chip--true">{{ success_message }}</p>{% endif %}
-  {% if error_message %}<p class="chip chip--false">{{ error_message }}</p>{% endif %}
+<div id="question-form-wrapper">
+  {% if success_message %}<div class="notice notice--success"><p>{{ success_message }} Ela já entra no treino dos colegas.</p></div>{% endif %}
+  {% if error_message %}<div class="notice notice--danger"><p>{{ error_message }}</p></div>{% endif %}
 
-  <form hx-post="{% url 'questions:create' %}" hx-target="#question-form-wrapper" hx-swap="outerHTML">
+  {% if similar_questions %}
+  <section class="surface" aria-labelledby="similar-title">
+    <h2 id="similar-title">Já existe uma pergunta parecida</h2>
+    <p class="muted">Sua questão não foi salva. Tente outra afirmação, ou um aspecto diferente do mesmo assunto.</p>
+    <div class="section-list">
+    {% for sq in similar_questions %}
+      <article class="ficha ficha--compact">
+        <p class="ficha__statement">{{ sq.question.statement }}</p>
+        <div class="similarity"><span>Parecida</span><div class="meter" aria-hidden="true"><span style="width: {% widthratio sq.similarity 1 100 %}%"></span></div><span>{{ sq.similarity|floatformat:2 }}</span></div>
+      </article>
+    {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <form class="surface" hx-post="{% url 'questions:create' %}" hx-target="#question-form-wrapper" hx-swap="outerHTML">
     {% csrf_token %}
-    <p>
-      <label for="id_statement">Enunciado</label>
+    {{ form.non_field_errors }}
+    <div class="field">
+      <label for="id_statement">Enunciado <span class="char-count" id="statement-count" aria-live="polite"></span></label>
       {{ form.statement }}
       {{ form.statement.errors }}
-    </p>
-    <p>
-      <label>Resposta correta</label>
-      {{ form.correct_answer }}
+    </div>
+    <fieldset class="field">
+      <legend>Resposta correta</legend>
+      <div class="tf tf--radios">
+        {% for radio in form.correct_answer %}
+          <label class="tf__option" for="{{ radio.id_for_label }}">{{ radio.tag }}{{ radio.choice_label }}</label>
+        {% endfor %}
+      </div>
       {{ form.correct_answer.errors }}
-    </p>
-    <p>
+    </fieldset>
+    <div class="field">
       <label for="id_topic">{{ form.topic.label }}</label>
       {{ form.topic }}
       {{ form.topic.errors }}
-    </p>
-    <p id="new-topic-wrapper" data-new-topic-value="{{ new_topic_choice }}">
+    </div>
+    <div class="field" id="new-topic-wrapper" data-new-topic-value="{{ new_topic_choice }}">
       <label for="id_new_topic">{{ form.new_topic.label }}</label>
       {{ form.new_topic }}
       <small>{{ form.new_topic.help_text }}</small>
       {{ form.new_topic.errors }}
-    </p>
-    <p>
+    </div>
+    <div class="field">
       <label for="id_citations_references">{{ form.citations_references.label }}</label>
       {{ form.citations_references }}
+      <small>Capítulo, seção ou trecho do livro que confirma a resposta.</small>
       {{ form.citations_references.errors }}
-    </p>
-    <p>
+    </div>
+    <div class="field">
       <label for="id_pertinence">{{ form.pertinence.label }}</label>
       {{ form.pertinence }}
+      <small>{{ form.pertinence.help_text }}</small>
       {{ form.pertinence.errors }}
-    </p>
+    </div>
     <button type="submit" class="btn btn-primary">Criar questão</button>
   </form>
 
-  {% if similar_questions %}
-  <div class="similar-list">
-    <h2>Ja existe uma pergunta parecida</h2>
-    {% for sq in similar_questions %}
-      <div class="card">
-        <p>{{ sq.question.statement }}</p>
-        <span class="chip chip--accent">similaridade {{ sq.similarity|floatformat:2 }}</span>
-      </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <script>
-    (function () {
-      var topicSelect = document.getElementById("id_topic");
-      var newTopicWrapper = document.getElementById("new-topic-wrapper");
-      function toggleNewTopic() {
-        newTopicWrapper.style.display = topicSelect.value === newTopicWrapper.dataset.newTopicValue ? "" : "none";
-      }
-      topicSelect.addEventListener("change", toggleNewTopic);
-      toggleNewTopic();
-    })();
-  </script>
 </div>

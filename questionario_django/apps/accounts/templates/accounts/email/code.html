@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<body style="font-family: Arial, Helvetica, sans-serif; color: #222; line-height: 1.5;">
-  <p>Olá!</p>
-  <p>{{ intro }}</p>
-  <p style="font-size: 28px; font-weight: bold; letter-spacing: 6px; margin: 16px 0;">{{ code }}</p>
-  <p>Ele vale por {{ ttl_minutes }} minutos. Se você pedir um novo código, este deixa de valer.</p>
-  <p style="color: #666; font-size: 13px;">Se você não pediu este código, ignore este e-mail.</p>
+<body style="margin:0; padding:24px 12px; background:#F3F6F9; font-family: Arial, Helvetica, sans-serif; color:#1E2942; line-height:1.55;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px; margin:0 auto; background:#FFFFFF; border:1px solid #D9E0EA; border-radius:12px;">
+    <tr><td style="padding:24px 28px;">
+      <p style="margin:0 0 16px; font-size:18px; font-weight:bold; color:#2447A8;">Questionário</p>
+      <p style="margin:0 0 12px;">Olá!</p>
+      <p style="margin:0 0 12px;">{{ intro }}</p>
+      <p style="margin:20px 0; font-size:30px; font-weight:bold; letter-spacing:8px; font-family: 'Courier New', monospace;"><span style="background:#FFE45C; padding:4px 10px; border-radius:4px; color:#1E2942;">{{ code }}</span></p>
+      <p style="margin:0 0 12px;">Ele vale por {{ ttl_minutes }} minutos. Se você pedir um novo código, este deixa de valer.</p>
+      <p style="margin:16px 0 0; color:#56617A; font-size:13px;">Se você não pediu este código, ignore este e-mail.</p>
+    </td></tr>
+  </table>
 </body>
 </html>

@@ -1,53 +1,53 @@
-<div class="qpanel" id="comments-{{ question.id }}">
+<section class="qpanel" id="comments-{{ question.id }}" aria-label="Comentários">
   <div class="qpanel-head">
     <h3>Comentários ({{ comments|length }})</h3>
-    <button type="button" class="btn" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#comments-{{ question.id }}" hx-swap="outerHTML">Fechar</button>
+    <button type="button" class="btn btn-ghost btn-small" hx-get="{% url 'moderation:close_report_modal' %}" hx-target="#comments-{{ question.id }}" hx-swap="outerHTML">Fechar</button>
   </div>
 
   {% for comment in comments %}
     <div class="comment" id="comment-{{ comment.id }}">
-      <p class="comment-meta"><strong>{{ comment.author.name }}</strong>{% if comment.author_id == question.author_id %} <span class="chip chip--accent chip-author">Autor da questão</span>{% endif %} · {{ comment.created_at|date:"d/m/Y H:i" }}</p>
+      <p class="comment-meta"><strong>{{ comment.author.name }}</strong>{% if comment.author_id == question.author_id %}<span class="tag chip-author">Autor da questão</span>{% endif %}<time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:"d/m/Y, H:i" }}</time></p>
       <p class="comment-text">{{ comment.text|linebreaksbr }}</p>
       <div class="comment-actions">
         {% if comment.author_id == user.id %}
           <form hx-post="{% url 'questions:delete_comment' comment.id %}" hx-target="#comments-{{ question.id }}" hx-swap="outerHTML" hx-confirm="Apagar seu comentário?">
             {% csrf_token %}
-            <button type="submit" class="btn btn-small">Apagar</button>
+            <button type="submit" class="btn btn-ghost btn-small">Apagar</button>
           </form>
         {% else %}
           {% if is_admin %}
-            <form hx-post="{% url 'questions:delete_comment' comment.id %}" hx-target="#comments-{{ question.id }}" hx-swap="outerHTML" hx-confirm="Remover este comentário (admin)?">
+            <form hx-post="{% url 'questions:delete_comment' comment.id %}" hx-target="#comments-{{ question.id }}" hx-swap="outerHTML" hx-confirm="Remover este comentário para todos?">
               {% csrf_token %}
               <button type="submit" class="btn btn-small btn-danger">Remover (admin)</button>
             </form>
           {% endif %}
           <div id="comment-{{ comment.id }}-report">
             {% if comment.id in reported_ids %}
-              <span class="chip chip--neutral">Reportado</span>
+              <span class="tag tag--muted">Reportado</span>
             {% else %}
-              <button type="button" class="btn btn-small" hx-get="{% url 'questions:report_comment' comment.id %}" hx-target="#comment-{{ comment.id }}-report">Reportar</button>
+              <button type="button" class="btn btn-ghost btn-small" hx-get="{% url 'questions:report_comment' comment.id %}" hx-target="#comment-{{ comment.id }}-report">Reportar</button>
             {% endif %}
           </div>
         {% endif %}
       </div>
     </div>
   {% empty %}
-    <p>Ninguém comentou ainda. Seja o primeiro!</p>
+    <p class="muted">Ninguém comentou ainda. Escreva o primeiro comentário.</p>
   {% endfor %}
 
   {% if not comments_open %}
     {{ form.non_field_errors }}
-    <p class="chip chip--neutral">Questão removida — comentários só para leitura.</p>
+    <p class="notice"><span>Questão removida: os comentários ficam só para leitura.</span></p>
   {% else %}
   <form hx-post="{% url 'questions:comments_panel' question.id %}" hx-target="#comments-{{ question.id }}" hx-swap="outerHTML">
     {% csrf_token %}
     {{ form.non_field_errors }}
-    <p>
+    <div class="field">
       <label for="id_text_{{ question.id }}">{{ form.text.label }}</label>
-      <textarea name="text" id="id_text_{{ question.id }}" rows="3" maxlength="1000" placeholder="Deixe um comentário" required>{{ form.text.value|default_if_none:"" }}</textarea>
+      <textarea name="text" id="id_text_{{ question.id }}" rows="3" maxlength="1000" placeholder="Uma dúvida, uma dica, uma referência…" required>{{ form.text.value|default_if_none:"" }}</textarea>
       {{ form.text.errors }}
-    </p>
+    </div>
     <button type="submit" class="btn btn-primary">Enviar comentário</button>
   </form>
   {% endif %}
-</div>
+</section>

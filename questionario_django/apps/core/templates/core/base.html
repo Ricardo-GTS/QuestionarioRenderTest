@@ -2,26 +2,35 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Questionario{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Questionário{% endblock %}</title>
+  <meta name="theme-color" content="#F3F6F9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#131A2A" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="{% static 'core/favicon.svg' %}" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Recursive:wght,CASL@300..800,0..1&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'core/css/tokens.css' %}">
   <link rel="stylesheet" href="{% static 'core/css/base.css' %}">
   <link rel="stylesheet" href="{% static 'core/css/components.css' %}">
   <script src="{% static 'core/js/htmx.min.js' %}" defer></script>
   <script src="{% static 'core/js/htmx-csrf.js' %}" defer></script>
+  <script src="{% static 'core/js/forms.js' %}" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="{% if user.is_authenticated %}has-tabbar{% endif %}">
+  {% include "core/_icons.html" %}
   {% include "core/_navbar.html" %}
-  <main class="container">
+  <main id="conteudo" class="page {% block page_class %}{% endblock %}">
     {% if messages %}
-      {% for message in messages %}
-        <p class="chip chip--{{ message.tags|default:'accent' }}">{{ message }}</p>
-      {% endfor %}
+      <div class="notices" role="status">
+        {% for message in messages %}
+          <div class="notice notice--{{ message.tags|default:'info' }}"><p>{{ message }}</p></div>
+        {% endfor %}
+      </div>
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+  {% if user.is_authenticated %}{% include "core/_tabbar.html" %}{% endif %}
 </body>
 </html>

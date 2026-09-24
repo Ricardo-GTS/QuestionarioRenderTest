@@ -1,45 +1,39 @@
 {% extends "core/base.html" %}
-{% block title %}Cadastrar - Questionario{% endblock %}
+{% block title %}Criar conta - Questionário{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 {% block content %}
-<h1>Cadastrar</h1>
-<div class="card">
-  <form method="post" action="{% url 'accounts:register' %}">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    <p>
-      <label for="id_name">Nome</label>
-      {{ form.name }}
-      {{ form.name.errors }}
-    </p>
-    <p>
-      <label for="id_email">E-mail</label>
-      {{ form.email }}
-      {{ form.email.errors }}
-    </p>
-    <p>
-      <label for="id_registration_number">{{ form.registration_number.label }}</label>
-      {{ form.registration_number }}
-      {{ form.registration_number.errors }}
-    </p>
-    <p>
-      <label for="id_password">Senha</label>
-      {{ form.password }}
-      {{ form.password.errors }}
-    </p>
-    <button type="submit" class="btn btn-primary">Cadastrar</button>
-  </form>
+{% include "accounts/_auth_brand.html" %}
+<div class="page-head">
+  <h1>Criar conta</h1>
+  <p>Enviaremos um código para confirmar o seu e-mail.</p>
 </div>
-
-<div class="card">
-  {% if google_client_id %}
-    <div id="g_id_onload"
-         data-client_id="{{ google_client_id }}"
-         data-login_uri="{% url 'accounts:google_login' %}">
-    </div>
-    <div class="g_id_signin" data-type="standard"></div>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-  {% endif %}
-</div>
-
-<p>Ja tem conta? <a href="{% url 'accounts:login' %}">Entrar</a></p>
+<form class="surface" method="post" action="{% url 'accounts:register' %}">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="field">
+    <label for="id_name">Nome</label>
+    {{ form.name }}
+    {{ form.name.errors }}
+  </div>
+  <div class="field">
+    <label for="id_email">E-mail</label>
+    {{ form.email }}
+    {{ form.email.errors }}
+  </div>
+  <div class="field">
+    <label for="id_registration_number">{{ form.registration_number.label }}</label>
+    {{ form.registration_number }}
+    <small>Só números, de 8 a 12 dígitos.</small>
+    {{ form.registration_number.errors }}
+  </div>
+  <div class="field">
+    <label for="id_password">Senha</label>
+    {{ form.password }}
+    <small>Pelo menos 8 caracteres.</small>
+    {{ form.password.errors }}
+  </div>
+  <button type="submit" class="btn btn-primary btn-block">Criar conta</button>
+  {% include "accounts/_google_button.html" %}
+</form>
+<div class="auth-alt"><p>Já tem conta? <a href="{% url 'accounts:login' %}">Entrar</a></p></div>
 {% endblock %}

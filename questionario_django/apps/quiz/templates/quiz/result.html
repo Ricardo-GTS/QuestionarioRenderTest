@@ -1,19 +1,30 @@
 {% extends "core/base.html" %}
-{% block title %}Resultado - Questionario{% endblock %}
+{% block title %}Resultado - Questionário{% endblock %}
 {% block content %}
-<h1>Resultado</h1>
-<div class="card">
-  <p>Voce acertou <strong>{{ result.score }}</strong> de <strong>{{ result.total }}</strong>.</p>
-</div>
+<section class="surface result-summary">
+  <h1>Treino concluído</h1>
+  <div class="grade" aria-label="Você acertou {{ result.score }} de {{ result.total }}">
+    <svg viewBox="0 0 150 120" aria-hidden="true"><path d="M112 22 C 84 6, 26 14, 16 52 C 8 86, 56 110, 100 100 C 138 90, 146 50, 120 30 C 112 24, 98 18, 84 18"/></svg>
+    <span>{{ result.score }}/{{ result.total }}</span>
+  </div>
+  <p>{% if result.score == result.total %}Acertou todas. Que tal treinar um tópico que você ainda não domina?{% elif result.score == 0 %}Nenhum acerto desta vez. Leia as referências das questões e tente de novo.{% else %}Revise abaixo as que você errou antes de treinar de novo.{% endif %}</p>
+  <div class="actions actions--center">
+    <a href="{% url 'quiz:start' %}" class="btn btn-primary">Treinar de novo</a>
+    <a href="{% url 'accounts:stats' %}" class="btn">Ver estatísticas</a>
+  </div>
+</section>
+
+<h2 class="section-title">Correção</h2>
+<div class="section-list">
 {% for item in result.feedback %}
-<div class="card">
-  <p>{{ item.statement }}</p>
-  <span class="chip {% if item.is_correct %}chip--true{% else %}chip--false{% endif %}">
-    {% if item.is_correct %}Correto{% else %}Incorreto{% endif %}
-  </span>
-  <p>Resposta correta: {% if item.correct_answer %}Verdadeiro{% else %}Falso{% endif %}</p>
-  <a href="#" hx-get="{% url 'moderation:report_question' item.question_id %}" hx-target="body" hx-swap="beforeend" class="btn">Reportar</a>
-</div>
+  <article class="ficha ficha--compact">
+    <p class="ficha__statement">{{ item.statement }}</p>
+    <div class="meta-row">
+      <span class="tag {% if item.is_correct %}tag--ok{% else %}tag--wrong{% endif %}">{% if item.is_correct %}Acertou{% else %}Errou{% endif %}</span>
+      <span>Resposta correta: <strong>{% if item.correct_answer %}Verdadeiro{% else %}Falso{% endif %}</strong></span>
+      <button type="button" class="btn btn-ghost btn-small" hx-get="{% url 'moderation:report_question' item.question_id %}" hx-target="body" hx-swap="beforeend"><svg aria-hidden="true"><use href="#i-flag"/></svg>Reportar</button>
+    </div>
+  </article>
 {% endfor %}
-<a href="{% url 'quiz:start' %}" class="btn btn-primary">Treinar de novo</a>
+</div>
 {% endblock %}

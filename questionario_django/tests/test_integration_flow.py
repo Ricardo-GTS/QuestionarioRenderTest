@@ -184,7 +184,7 @@ def test_admin_edit_question_topic_select_offers_choices_and_allows_new_topic(cl
 
     form = QuestionEditForm()
     assert ("Topico Antigo", "Topico Antigo") in form.fields["topic"].choices
-    assert (NEW_TOPIC_CHOICE, "Novo Tópico") in form.fields["topic"].choices
+    assert (NEW_TOPIC_CHOICE, "Novo tópico") in form.fields["topic"].choices
 
     # Selecionar "Novo Topico" sem preencher o texto -> erro, topico nao muda
     resp = client.post(

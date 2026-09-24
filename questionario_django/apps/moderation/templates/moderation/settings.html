@@ -1,28 +1,30 @@
 {% extends "core/base.html" %}
-{% block title %}Admin - Configuracoes{% endblock %}
+{% block title %}Configurações - Admin{% endblock %}
+{% block page_class %}page--wide{% endblock %}
 {% block content %}
-{% include "core/_admin_nav.html" %}
-<h1>Configuracoes</h1>
-<div class="card">
-  {% if error %}<p class="chip chip--false">{{ error }}</p>{% endif %}
-  <form method="post" hx-post="{% url 'moderation:admin_settings' %}" hx-target="body">
-    {% csrf_token %}
-    <p>
-      <label>{{ form.similarity_threshold.label }}</label>
-      {{ form.similarity_threshold }}
-      {{ form.similarity_threshold.errors }}
-    </p>
-    <p>
-      <label>{{ form.quiz_size.label }}</label>
-      {{ form.quiz_size }}
-      {{ form.quiz_size.errors }}
-    </p>
-    <p>
-      <label>{{ form.report_threshold.label }}</label>
-      {{ form.report_threshold }}
-      {{ form.report_threshold.errors }}
-    </p>
-    <button type="submit" class="btn btn-primary">Salvar</button>
-  </form>
-</div>
+{% include "core/_admin_nav.html" with admin_title="Configurações" %}
+<form class="surface" method="post" hx-post="{% url 'moderation:admin_settings' %}" hx-target="body">
+  {% csrf_token %}
+  {% if error %}<div class="notice notice--danger"><p>{{ error }}</p></div>{% endif %}
+  <p class="muted">Valem só para o semestre selecionado no topo.</p>
+  <div class="field">
+    <label for="{{ form.similarity_threshold.id_for_label }}">{{ form.similarity_threshold.label }}</label>
+    {{ form.similarity_threshold }}
+    <small>De 0 a 1. Uma questão nova é recusada quando fica pelo menos tão parecida com uma existente. Use ponto como separador (ex.: 0.8).</small>
+    {{ form.similarity_threshold.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.quiz_size.id_for_label }}">{{ form.quiz_size.label }}</label>
+    {{ form.quiz_size }}
+    <small>Quantas perguntas tem cada treino.</small>
+    {{ form.quiz_size.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.report_threshold.id_for_label }}">{{ form.report_threshold.label }}</label>
+    {{ form.report_threshold }}
+    <small>Com esse número de reportes, a pergunta sai do treino até você decidir.</small>
+    {{ form.report_threshold.errors }}
+  </div>
+  <button type="submit" class="btn btn-primary">Salvar configurações</button>
+</form>
 {% endblock %}

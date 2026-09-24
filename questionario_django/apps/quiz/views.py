@@ -106,6 +106,27 @@ def _topics_context(request) -> dict:
     }
 
 
+def _progress(request) -> list[dict]:
+    """Trilha do card: uma marca por questao -- ok/wrong (ja' respondida), current, pending.
+    Uma consulta so' (as respostas corretas das questoes ja' respondidas)."""
+    from apps.questions.models import Question
+
+    ids = request.session.get("quiz_question_ids", [])
+    answers = request.session.get("quiz_answers", {})
+    answered_ids = [int(qid) for qid in answers]
+    correct = dict(Question.objects.filter(pk__in=answered_ids).values_list("pk", "correct_answer")) if answered_ids else {}
+    position = _position(request)
+    track = []
+    for index, qid in enumerate(ids):
+        given = answers.get(str(qid))
+        if given is not None and qid in correct:
+            state = "ok" if given == correct[qid] else "wrong"
+        else:
+            state = "current" if index == position else "pending"
+        track.append({"number": index + 1, "state": state, "current": index == position})
+    return track
+
+
 def _card_context(request):
     ids = request.session.get("quiz_question_ids", [])
     if not ids:
@@ -117,6 +138,7 @@ def _card_context(request):
     given = answers.get(str(question.id))
     context = {
         "question": question,
+        "progress": _progress(request),
         **_topics_context(request),
         "index": _position(request) + 1,
         "total": len(request.session["quiz_question_ids"]),

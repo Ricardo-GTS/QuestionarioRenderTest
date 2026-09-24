@@ -1,61 +1,74 @@
 {% extends "core/base.html" %}
-{% block title %}Admin - Topicos{% endblock %}
+{% block title %}Tópicos - Admin{% endblock %}
+{% block page_class %}page--wide{% endblock %}
 {% block content %}
-{% include "core/_admin_nav.html" %}
-<h1>Tópicos</h1>
-{% if error %}<p class="chip chip--false">{{ error }}</p>{% endif %}
+{% include "core/_admin_nav.html" with admin_title="Tópicos" %}
+{% if error %}<div class="notice notice--danger"><p>{{ error }}</p></div>{% endif %}
 
-<div class="card">
-  <form method="post" action="{% url 'moderation:topic_create' %}" hx-post="{% url 'moderation:topic_create' %}" hx-target="body">
-    {% csrf_token %}
-    <p>
-      <label for="new-topic-name">Novo tópico</label>
-      <input type="text" id="new-topic-name" name="name" maxlength="120" required>
-    </p>
-    <button type="submit" class="btn btn-primary">Adicionar</button>
-  </form>
-</div>
-
-{% for topic in topics %}
-  <div class="card">
-    <p><strong>{{ topic.name }}</strong> · {{ topic.count }} pergunta{{ topic.count|pluralize }}</p>
-    <form method="post" action="{% url 'moderation:topic_rename' %}" hx-post="{% url 'moderation:topic_rename' %}" hx-target="body">
-      {% csrf_token %}
-      <input type="hidden" name="topic" value="{{ topic.name }}">
-      <input type="text" name="new_name" value="{{ topic.name }}" maxlength="120" required aria-label="Novo nome para {{ topic.name }}">
-      <button type="submit" class="btn">Renomear</button>
-    </form>
-    {% if topic.count %}
-      <form method="post" action="{% url 'moderation:topic_delete' %}" hx-post="{% url 'moderation:topic_delete' %}" hx-target="body"
-            hx-confirm="Excluir o tópico '{{ topic.name }}' e mover as {{ topic.count }} pergunta(s) para o tópico escolhido?">
-        {% csrf_token %}
-        <input type="hidden" name="topic" value="{{ topic.name }}">
-        <input type="hidden" name="mode" value="move">
-        <label>Mover perguntas para
-          <select name="reassign_to" required>
-            <option value="">-- escolha --</option>
-            {% for other in topics %}{% if other.name != topic.name %}<option value="{{ other.name }}">{{ other.name }}</option>{% endif %}{% endfor %}
-          </select>
-        </label>
-        <button type="submit" class="btn">Mover Questões e Excluir Tópico</button>
-      </form>
-      <form method="post" action="{% url 'moderation:topic_delete' %}" hx-post="{% url 'moderation:topic_delete' %}" hx-target="body"
-            hx-confirm="Excluir o tópico '{{ topic.name }}' e APAGAR DEFINITIVAMENTE as {{ topic.count }} pergunta(s) dele (e os reportes delas)? Essa ação não pode ser desfeita.">
-        {% csrf_token %}
-        <input type="hidden" name="topic" value="{{ topic.name }}">
-        <input type="hidden" name="mode" value="delete_questions">
-        <button type="submit" class="btn">Excluir Tópico e Questões</button>
-      </form>
-    {% else %}
-      <form method="post" action="{% url 'moderation:topic_delete' %}" hx-post="{% url 'moderation:topic_delete' %}" hx-target="body"
-            hx-confirm="Excluir o tópico '{{ topic.name }}'?">
-        {% csrf_token %}
-        <input type="hidden" name="topic" value="{{ topic.name }}">
-        <button type="submit" class="btn">Excluir</button>
-      </form>
-    {% endif %}
+<form class="surface inline-create" method="post" action="{% url 'moderation:topic_create' %}" hx-post="{% url 'moderation:topic_create' %}" hx-target="body">
+  {% csrf_token %}
+  <div class="field">
+    <label for="new-topic-name">Novo tópico</label>
+    <input type="text" id="new-topic-name" name="name" maxlength="120" required placeholder="Ex.: Capítulo 5: Princípios de projeto (Valente, 2020)">
   </div>
-{% empty %}
-  <p>Nenhum tópico cadastrado.</p>
-{% endfor %}
+  <button type="submit" class="btn btn-primary">Adicionar tópico</button>
+</form>
+
+{% if topics %}
+<div class="surface surface--flush">
+  <table class="table">
+    <thead><tr><th>Tópico</th><th class="num">Perguntas</th><th>Renomear</th><th>Excluir</th></tr></thead>
+    <tbody>
+    {% for topic in topics %}
+      <tr>
+        <td data-label="Tópico"><strong>{{ topic.name }}</strong></td>
+        <td class="num" data-label="Perguntas">{{ topic.count }}</td>
+        <td data-label="Renomear">
+          <form class="rename-form rename-form--wide" method="post" action="{% url 'moderation:topic_rename' %}" hx-post="{% url 'moderation:topic_rename' %}" hx-target="body">
+            {% csrf_token %}
+            <input type="hidden" name="topic" value="{{ topic.name }}">
+            <input type="text" name="new_name" value="{{ topic.name }}" maxlength="120" required aria-label="Novo nome para {{ topic.name }}">
+            <button type="submit" class="btn btn-small">Renomear</button>
+          </form>
+        </td>
+        <td data-label="Excluir">
+          {% if topic.count %}
+            <details class="danger-zone">
+              <summary>Excluir…</summary>
+              <form method="post" action="{% url 'moderation:topic_delete' %}" hx-post="{% url 'moderation:topic_delete' %}" hx-target="body"
+                    hx-confirm="Excluir o tópico '{{ topic.name }}' e mover as {{ topic.count }} pergunta(s) para o tópico escolhido?">
+                {% csrf_token %}
+                <input type="hidden" name="topic" value="{{ topic.name }}">
+                <input type="hidden" name="mode" value="move">
+                <label for="reassign-{{ forloop.counter }}">Mover as perguntas para</label>
+                <select id="reassign-{{ forloop.counter }}" name="reassign_to" required>
+                  <option value="">Escolha um tópico</option>
+                  {% for other in topics %}{% if other.name != topic.name %}<option value="{{ other.name }}">{{ other.name }}</option>{% endif %}{% endfor %}
+                </select>
+                <button type="submit" class="btn btn-small">Mover questões e excluir tópico</button>
+              </form>
+              <form method="post" action="{% url 'moderation:topic_delete' %}" hx-post="{% url 'moderation:topic_delete' %}" hx-target="body"
+                    hx-confirm="Excluir o tópico '{{ topic.name }}' e APAGAR DEFINITIVAMENTE as {{ topic.count }} pergunta(s) dele (e os reportes delas)? Essa ação não pode ser desfeita.">
+                {% csrf_token %}
+                <input type="hidden" name="topic" value="{{ topic.name }}">
+                <input type="hidden" name="mode" value="delete_questions">
+                <button type="submit" class="btn btn-small btn-danger">Excluir tópico e questões</button>
+              </form>
+            </details>
+          {% else %}
+            <form method="post" action="{% url 'moderation:topic_delete' %}" hx-post="{% url 'moderation:topic_delete' %}" hx-target="body" hx-confirm="Excluir o tópico '{{ topic.name }}'?">
+              {% csrf_token %}
+              <input type="hidden" name="topic" value="{{ topic.name }}">
+              <button type="submit" class="btn btn-small btn-danger">Excluir</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="empty"><strong>Nenhum tópico cadastrado.</strong></div>
+{% endif %}
 {% endblock %}

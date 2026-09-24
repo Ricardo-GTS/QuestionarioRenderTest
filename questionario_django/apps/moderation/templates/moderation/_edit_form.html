@@ -1,52 +1,41 @@
-<div class="card" id="question-{{ question.id }}">
-  <form hx-post="{% url 'moderation:edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    <p>
-      <label>{{ form.statement.label }}</label>
-      {{ form.statement }}
-      {{ form.statement.errors }}
-    </p>
-    <p>
-      <label>{{ form.correct_answer.label }}</label>
-      {{ form.correct_answer }}
-      {{ form.correct_answer.errors }}
-    </p>
-    <p>
-      <label>{{ form.topic.label }}</label>
-      {{ form.topic }}
-      {{ form.topic.errors }}
-    </p>
-    <p id="new-topic-wrapper-{{ question.id }}" data-new-topic-value="{{ new_topic_choice }}">
-      <label>{{ form.new_topic.label }}</label>
-      {{ form.new_topic }}
-      <small>{{ form.new_topic.help_text }}</small>
-      {{ form.new_topic.errors }}
-    </p>
-    <p>
-      <label>{{ form.citations_references.label }}</label>
-      {{ form.citations_references }}
-      {{ form.citations_references.errors }}
-    </p>
-    <p>
-      <label>{{ form.pertinence.label }}</label>
-      {{ form.pertinence }}
-      {{ form.pertinence.errors }}
-    </p>
-    <button type="submit" class="btn btn-primary">Salvar</button>
-    <button type="button" class="btn" hx-get="{% url 'moderation:cancel_edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">Cancelar</button>
-  </form>
-
-  <script>
-    (function () {
-      var card = document.getElementById("question-{{ question.id }}");
-      var topicSelect = card.querySelector('select[name="topic"]');
-      var newTopicWrapper = document.getElementById("new-topic-wrapper-{{ question.id }}");
-      function toggleNewTopic() {
-        newTopicWrapper.style.display = topicSelect.value === newTopicWrapper.dataset.newTopicValue ? "" : "none";
-      }
-      topicSelect.addEventListener("change", toggleNewTopic);
-      toggleNewTopic();
-    })();
-  </script>
-</div>
+<form class="surface" id="question-{{ question.id }}" hx-post="{% url 'moderation:edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="field">
+    <label for="{{ form.statement.id_for_label }}">{{ form.statement.label }}</label>
+    {{ form.statement }}
+    {{ form.statement.errors }}
+  </div>
+  <fieldset class="field">
+    <legend>{{ form.correct_answer.label }}</legend>
+    <div class="tf tf--radios">
+      {% for radio in form.correct_answer %}<label class="tf__option" for="{{ radio.id_for_label }}">{{ radio.tag }}{{ radio.choice_label }}</label>{% endfor %}
+    </div>
+    {{ form.correct_answer.errors }}
+  </fieldset>
+  <div class="field">
+    <label for="{{ form.topic.id_for_label }}">{{ form.topic.label }}</label>
+    {{ form.topic }}
+    {{ form.topic.errors }}
+  </div>
+  <div class="field" id="new-topic-wrapper-{{ question.id }}" data-new-topic-value="{{ new_topic_choice }}">
+    <label for="{{ form.new_topic.id_for_label }}">{{ form.new_topic.label }}</label>
+    {{ form.new_topic }}
+    <small>{{ form.new_topic.help_text }}</small>
+    {{ form.new_topic.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.citations_references.id_for_label }}">{{ form.citations_references.label }}</label>
+    {{ form.citations_references }}
+    {{ form.citations_references.errors }}
+  </div>
+  <div class="field">
+    <label for="{{ form.pertinence.id_for_label }}">{{ form.pertinence.label }}</label>
+    {{ form.pertinence }}
+    {{ form.pertinence.errors }}
+  </div>
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">Salvar alterações</button>
+    <button type="button" class="btn btn-ghost" hx-get="{% url 'moderation:cancel_edit_question' question.id %}" hx-target="#question-{{ question.id }}" hx-swap="outerHTML">Cancelar</button>
+  </div>
+</form>

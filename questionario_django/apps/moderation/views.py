@@ -46,7 +46,7 @@ def report_question(request, question_id):
         form = ReportForm(request.POST)
         if form.is_valid():
             if Report.objects.filter(question=question, reporter=request.user).exists():
-                form.add_error(None, "Voce ja reportou essa pergunta")
+                form.add_error(None, "Você já reportou essa pergunta")
             else:
                 register_report(
                     question=question,

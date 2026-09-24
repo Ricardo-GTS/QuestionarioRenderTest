@@ -1,22 +1,24 @@
 {% extends "core/base.html" %}
-{% block title %}Informe sua matrícula - Questionario{% endblock %}
+{% block title %}Informe sua matrícula - Questionário{% endblock %}
+{% block page_class %}page--narrow{% endblock %}
 {% block content %}
-<h1>Informe sua matrícula</h1>
-<div class="card">
-  <p>Para continuar usando o sistema, informe sua matrícula da universidade.</p>
-  <form method="post" action="{% url 'accounts:complete_registration_number' %}">
-    {% csrf_token %}
-    {{ form.non_field_errors }}
-    <p>
-      <label for="id_registration_number">{{ form.registration_number.label }}</label>
-      {{ form.registration_number }}
-      {{ form.registration_number.errors }}
-    </p>
-    <button type="submit" class="btn btn-primary">Salvar</button>
-  </form>
-  <form method="post" action="{% url 'accounts:logout' %}">
-    {% csrf_token %}
-    <button type="submit" class="btn">Sair</button>
-  </form>
+<div class="page-head">
+  <h1>Informe sua matrícula</h1>
+  <p>Para continuar, informe a sua matrícula da universidade. Depois de salva, só o professor pode alterá-la.</p>
 </div>
+<form class="surface" method="post" action="{% url 'accounts:complete_registration_number' %}">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="field">
+    <label for="id_registration_number">{{ form.registration_number.label }}</label>
+    {{ form.registration_number }}
+    <small>Só números, de 8 a 12 dígitos.</small>
+    {{ form.registration_number.errors }}
+  </div>
+  <button type="submit" class="btn btn-primary btn-block">Salvar matrícula</button>
+</form>
+<form class="auth-alt" method="post" action="{% url 'accounts:logout' %}">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-ghost">Sair</button>
+</form>
 {% endblock %}

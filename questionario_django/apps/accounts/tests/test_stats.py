@@ -129,6 +129,11 @@ def test_performance_numbers(client, student):
     assert s["recent_attempts"][0]["percent"] == 70
     html = client.get(reverse("accounts:stats")).content.decode()
     assert "Treinar este tópico" in html and "topico=Historia" in html
+    # SVG com LANGUAGE_CODE pt-br: coordenadas com ponto, nunca "20,0" (quebrava o grafico)
+    import re
+
+    svg = re.search(r'<svg class="week-chart".*?</svg>', html, re.S).group(0)
+    assert not re.search(r'(x|y|width|height|x1|x2|y1|y2)="\d+,\d', svg)
 
 
 @pytest.mark.django_db

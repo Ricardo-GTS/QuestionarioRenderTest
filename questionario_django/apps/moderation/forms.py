@@ -30,14 +30,14 @@ class QuestionEditForm(forms.Form):
         max_length=120,
         required=False,
         label="Novo tópico",
-        help_text="Obrigatorio quando 'Novo Tópico' estiver selecionado acima.",
+        help_text="Obrigatório quando “Novo tópico” estiver selecionado acima.",
     )
     citations_references = forms.CharField(widget=forms.Textarea, label="Citações e referências")
     pertinence = forms.CharField(widget=forms.Textarea, label="Pertinência")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["topic"].choices = [(NEW_TOPIC_CHOICE, "Novo Tópico")] + [
+        self.fields["topic"].choices = [(NEW_TOPIC_CHOICE, "Novo tópico")] + [
             (topic, topic) for topic in services.list_topic_names()
         ]
 

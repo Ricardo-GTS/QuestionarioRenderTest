@@ -1,68 +1,121 @@
-/* Reset + tipografia global -- porte de frontend/questionario/style.py::GLOBAL_STYLE */
+/* Reset, tipografia e formularios -- "Caderno de estudo". */
 
-* {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  background-color: var(--color-paper);
-  color: var(--color-ink);
-  font-family: var(--font-body);
-  line-height: 1.5;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--fs-base);
+  font-variation-settings: var(--print);
+  line-height: 1.55;
+  text-rendering: optimizeLegibility;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading);
-  color: var(--color-ink);
-  margin-top: 0;
+h1, h2, h3, h4 {
+  margin: 0 0 var(--s3);
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--ink);
+}
+h1 { font-size: var(--fs-xl); font-variation-settings: var(--casual); letter-spacing: -0.01em; }
+h2 { font-size: var(--fs-lg); font-weight: 650; }
+h3 { font-size: var(--fs-md); font-weight: 650; }
+h4 { font-size: var(--fs-base); font-weight: 650; }
+@media (min-width: 900px) { h1 { font-size: var(--fs-xxl); } }
+
+p { margin: 0 0 var(--s3); max-width: var(--measure); }
+small, .muted { color: var(--muted); }
+small { font-size: var(--fs-sm); }
+strong { font-weight: 650; }
+
+a { color: var(--pen); text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+
+::selection { background: var(--highlight); color: var(--ink); }
+
+:focus-visible {
+  outline: 3px solid var(--pen);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-a {
-  color: var(--color-ink);
-}
+img, svg { max-width: 100%; }
 
-.container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 1.5em 1em;
-}
+table { border-collapse: collapse; }
 
-form p {
-  margin: 0.75em 0;
-}
+/* --- Formularios --- */
+
+form p, .field { margin: 0 0 var(--s4); max-width: none; }
 
 label {
   display: block;
   font-weight: 600;
-  margin-bottom: 0.25em;
+  margin-bottom: var(--s1);
 }
 
 input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="number"],
+input[type="date"],
 textarea,
 select {
   width: 100%;
-  padding: 0.5em;
-  border: 1.5px solid var(--color-ink);
-  border-radius: var(--radius);
-  font-family: var(--font-body);
-  background: white;
-  color: var(--color-ink);
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-btn);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-variation-settings: var(--print);
+}
+textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+input:hover, textarea:hover, select:hover { border-color: var(--muted); }
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--pen);
+  box-shadow: 0 0 0 3px var(--pen-soft);
+}
+input[type="checkbox"], input[type="radio"] { accent-color: var(--pen); width: 18px; height: 18px; }
+input:disabled, textarea:disabled, button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Erros do Django: texto + icone, nunca so' cor */
+.errorlist {
+  list-style: none;
+  margin: var(--s1) 0 0;
+  padding: 0;
+  color: var(--red);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.errorlist li::before { content: "✗ "; }
+.errorlist.nonfield {
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-btn);
+  background: var(--red-soft);
+  margin-bottom: var(--s4);
 }
 
-.errorlist {
-  color: var(--color-false);
-  font-weight: 600;
-  list-style: none;
-  padding: 0;
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *, *::before, *::after {
     animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
+
+fieldset { border: 0; padding: 0; margin: 0 0 var(--s4); min-width: 0; }
+legend { font-weight: 600; margin-bottom: var(--s1); padding: 0; }
+[hidden] { display: none !important; }

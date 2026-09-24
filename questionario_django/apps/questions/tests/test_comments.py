@@ -236,7 +236,7 @@ def test_interactions_my_reports_status(client, setup):
     q = setup["question"]
     Report.objects.create(question=q, reporter=setup["student"], reason="Fora do tema da disciplina", status="accepted")
     page = client.get(reverse("accounts:interactions"))
-    assert "Aceito — a questão foi removida" in page.content.decode()
+    assert "Aceito: a questão foi removida" in page.content.decode()
     assert "Fora do tema da disciplina" in page.content.decode()
 
 

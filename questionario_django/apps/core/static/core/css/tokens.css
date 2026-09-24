@@ -1,24 +1,80 @@
-/* Design tokens -- porte de frontend/questionario/style.py */
+/* Design tokens -- "Caderno de estudo".
+   Cada cor e' um material de quem estuda: papel frio, tinta grafite, caneta azul
+   (acoes), caneta vermelha (correcao: errou, Falso marcado, remover), verde de
+   "certo", marca-texto (destaque: novo, atual, numero-chave). Contraste WCAG AA
+   conferido em todos os pares texto/fundo nos dois temas; cores de grafico
+   validadas com o validate_palette.js do skill dataviz. */
+
 :root {
-  --color-ink: #16241C;
-  --color-paper: #EFF3EE;
-  --color-accent: #C88A1E;
-  --color-true: #2E7D5B;
-  --color-false: #B23A2E;
-  --color-border: var(--color-ink);
+  color-scheme: light dark;
 
-  --font-heading: 'Lora', serif;
-  --font-body: 'IBM Plex Sans', sans-serif;
+  --paper: #F3F6F9;
+  --card: #FFFFFF;
+  --ink: #1E2942;
+  --muted: #56617A;
+  --line: #D9E0EA;          /* bordas de superficie e campos */
+  --pen: #2447A8;
+  --pen-soft: #E6ECFA;      /* fundo de item selecionado / foco suave */
+  --red: #C22A3F;
+  --red-soft: #FBE8EB;
+  --ok: #1D7A4E;
+  --ok-soft: #E3F3EA;
+  --highlight: #FFE45C;     /* marca-texto: sempre com a tinta por cima */
+  --rule: #D5E1EE;          /* pautas da ficha */
+  --margin: #F2A7B0;        /* margem vermelha da ficha */
+  --on-strong: #FFFFFF;     /* texto sobre botao cheio */
 
-  --radius: 0;
+  --chart: #2447A8;
+  --chart-track: #DCE4F6;
+  --chart-grid: #E3E8EF;
+
+  --font: 'Recursive', system-ui, sans-serif;
+  --casual: "CASL" 1;       /* traco de caneta: titulos de pagina, marca, enunciado, nota */
+  --print: "CASL" 0;
+
+  --fs-sm: 0.8235rem;       /* 14px */
+  --fs-base: 1.0625rem;     /* 17px */
+  --fs-md: 1.25rem;         /* 20px */
+  --fs-lg: 1.5rem;          /* 24px */
+  --fs-xl: 1.875rem;        /* 30px */
+  --fs-xxl: 2.375rem;       /* 38px */
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+
+  --r-ficha: 4px;           /* papel */
+  --r-surface: 12px;
+  --r-btn: 10px;
+  --r-pill: 999px;
+
+  --shadow-paper: 0 1px 0 rgba(30, 41, 66, 0.06), 0 8px 18px -12px rgba(30, 41, 66, 0.45);
+  --measure: 68ch;
+  --page: 760px;
+  --page-wide: 1040px;
+  --tabbar-h: 64px;
 }
 
-/* Graficos (Estatisticas): uma serie so'. --color-chart e' um passo mais escuro do
-   accent -- #C88A1E ficava em 2.95:1 contra o card branco; este passa 3:1 (validado
-   com o validate_palette.js do skill dataviz). Track = passo claro do mesmo tom. */
-:root {
-  --color-chart: #B07818;
-  --color-chart-track: #F3E7D0;
-  --color-chart-grid: #E3E7E2;
-  --color-muted: #5F6B64;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #131A2A;
+    --card: #1B2438;
+    --ink: #E4E9F2;
+    --muted: #A3AEC4;
+    --line: #2C3753;
+    --pen: #93AAFF;
+    --pen-soft: #25305099;
+    --red: #FF7C8C;
+    --red-soft: #3A1F2B;
+    --ok: #5DCB90;
+    --ok-soft: #173327;
+    --highlight: rgba(255, 228, 92, 0.30);
+    --rule: #2A3652;
+    --margin: #6B2B3A;
+    --on-strong: #131A2A;
+
+    --chart: #6F88EC;         /* #93AAFF saia da faixa de luminosidade do validador */
+    --chart-track: #2A3652;
+    --chart-grid: #2A3652;
+
+    --shadow-paper: 0 1px 0 rgba(0, 0, 0, 0.25), 0 10px 22px -14px rgba(0, 0, 0, 0.8);
+  }
 }

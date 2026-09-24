@@ -1,6 +1,9 @@
 {% extends "core/base.html" %}
-{% block title %}Criar Questão - Questionario{% endblock %}
+{% block title %}Criar questão - Questionário{% endblock %}
 {% block content %}
-<h1>Criar Questão</h1>
+<div class="page-head">
+  <h1>Criar questão</h1>
+  <p>Escreva uma afirmação sobre o conteúdo e diga se ela é verdadeira ou falsa. Antes de salvar, o sistema confere se já existe uma questão parecida.</p>
+</div>
 {% include "questions/_form.html" %}
 {% endblock %}

@@ -1,24 +1,29 @@
-{% if all_semesters %}
-<form class="semester-selector" method="post" action="{% url 'core:select_semester' %}">
-  {% csrf_token %}
-  <input type="hidden" name="next" value="{{ request.get_full_path }}">
-  <label for="semester-select">Semestre:</label>
-  <select id="semester-select" name="semester" onchange="this.form.submit()">
-    {% for s in all_semesters %}<option value="{{ s.id }}"{% if current_semester and s.id == current_semester.id %} selected{% endif %}>{{ s.name }}{% if s.is_active %} (ativo){% endif %}</option>{% endfor %}
-  </select>
-  <noscript><button type="submit" class="btn btn-small">Ver</button></noscript>
-</form>
+{% with un=request.resolver_match.url_name %}
+<div class="admin-bar">
+  <h1>{{ admin_title }}</h1>
+  {% if all_semesters %}
+  <form class="semester-selector" method="post" action="{% url 'core:select_semester' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <label for="semester-select">Semestre</label>
+    <select id="semester-select" name="semester" onchange="this.form.submit()">
+      {% for s in all_semesters %}<option value="{{ s.id }}"{% if current_semester and s.id == current_semester.id %} selected{% endif %}>{{ s.name }}{% if s.is_active %} (ativo){% endif %}</option>{% endfor %}
+    </select>
+    <noscript><button type="submit" class="btn btn-small">Ver</button></noscript>
+  </form>
+  {% endif %}
+</div>
 {% if current_semester and not current_semester.is_active %}
-  <p class="chip chip--accent semester-notice">Você está vendo o semestre {{ current_semester.name }} (encerrado). Os alunos estão no semestre ativo.</p>
+  <div class="notice notice--warning"><p>Você está vendo o semestre {{ current_semester.name }} (encerrado). Os alunos estão no semestre ativo.</p></div>
 {% endif %}
-{% endif %}
-<nav class="admin-nav">
-  <a href="{% url 'moderation:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Visao Geral</a>
-  <a href="{% url 'moderation:pending_reports' %}" class="{% if request.resolver_match.url_name == 'pending_reports' %}active{% endif %}">Moderacao</a>
-  <a href="{% url 'moderation:pending_comment_reports' %}" class="{% if request.resolver_match.url_name == 'pending_comment_reports' %}active{% endif %}">Comentarios Reportados</a>
-  <a href="{% url 'moderation:removed_list' %}" class="{% if request.resolver_match.url_name == 'removed_list' %}active{% endif %}">Perguntas Removidas</a>
-  <a href="{% url 'moderation:topic_list' %}" class="{% if request.resolver_match.url_name == 'topic_list' %}active{% endif %}">Topicos</a>
-  <a href="{% url 'accounts:admin_user_list' %}" class="{% if request.resolver_match.url_name == 'admin_user_list' %}active{% endif %}">Usuarios</a>
-  <a href="{% url 'core:semesters' %}" class="{% if request.resolver_match.url_name == 'semesters' %}active{% endif %}">Semestres</a>
-  <a href="{% url 'moderation:admin_settings' %}" class="{% if request.resolver_match.url_name == 'admin_settings' %}active{% endif %}">Configuracoes</a>
+<nav class="tabs" aria-label="Painel do professor">
+  <a href="{% url 'moderation:dashboard' %}"{% if un == 'dashboard' %} aria-current="page"{% endif %}>Visão geral</a>
+  <a href="{% url 'moderation:pending_reports' %}"{% if un == 'pending_reports' %} aria-current="page"{% endif %}>Moderação</a>
+  <a href="{% url 'moderation:pending_comment_reports' %}"{% if un == 'pending_comment_reports' %} aria-current="page"{% endif %}>Comentários reportados</a>
+  <a href="{% url 'moderation:removed_list' %}"{% if un == 'removed_list' %} aria-current="page"{% endif %}>Perguntas removidas</a>
+  <a href="{% url 'moderation:topic_list' %}"{% if un == 'topic_list' %} aria-current="page"{% endif %}>Tópicos</a>
+  <a href="{% url 'accounts:admin_user_list' %}"{% if un == 'admin_user_list' %} aria-current="page"{% endif %}>Usuários</a>
+  <a href="{% url 'core:semesters' %}"{% if un == 'semesters' %} aria-current="page"{% endif %}>Semestres</a>
+  <a href="{% url 'moderation:admin_settings' %}"{% if un == 'admin_settings' %} aria-current="page"{% endif %}>Configurações</a>
 </nav>
+{% endwith %}

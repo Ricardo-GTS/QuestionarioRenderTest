@@ -62,6 +62,12 @@ def _admin_emails(settings, tmp_path_factory):
     # Planilhas de backup numa pasta temporaria, gravadas na hora (sem thread).
     settings.QUESTION_SHEETS_DIR = str(tmp_path_factory.mktemp("planilhas"))
     settings.QUESTION_SHEETS_ASYNC = False
+    # Estaticos sem manifesto nos testes: o ManifestStaticFilesStorage de producao exige
+    # um collectstatic rodado antes (arquivo novo = "Missing staticfiles manifest entry").
+    settings.STORAGES = {
+        **settings.STORAGES,
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
 
 
 def _fake_get_embedding(text: str) -> list[float]:

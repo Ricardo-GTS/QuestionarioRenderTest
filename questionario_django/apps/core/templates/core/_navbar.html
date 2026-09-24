@@ -1,25 +1,35 @@
-<nav class="navbar">
-  <div>
-    <a href="{% url 'questions:create' %}" style="font-family: var(--font-heading); font-weight: 700;">Questionario</a>
-  </div>
-  <div>
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="brand" href="{% if user.is_authenticated %}{% url 'quiz:start' %}{% else %}{% url 'accounts:login' %}{% endif %}">
+      <svg aria-hidden="true"><use href="#i-mark"/></svg>Questionário
+    </a>
     {% if user.is_authenticated %}
-      <a href="{% url 'questions:create' %}" class="{% if request.path == '/' %}active{% endif %}">Criar Questão</a>
-      <a href="{% url 'quiz:start' %}">Treinar</a>
-      <a href="{% url 'questions:mine' %}">Minhas Questões{% if my_questions_new_comments %} <span class="chip chip--accent nav-badge">{{ my_questions_new_comments }}</span>{% endif %}</a>
-      <a href="{% url 'accounts:interactions' %}">Minhas Interações</a>
-      <a href="{% url 'accounts:stats' %}">Estatisticas</a>
-      <a href="{% url 'accounts:account' %}">Conta</a>
-      {% if is_admin %}
-        <a href="{% url 'moderation:dashboard' %}">Admin</a>
-      {% endif %}
-      <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
-        {% csrf_token %}
-        <button type="submit" class="btn">Sair</button>
-      </form>
+      <nav class="mainnav" aria-label="Principal">
+        <a href="{% url 'quiz:start' %}"{% if nav == "treinar" %} aria-current="page"{% endif %}>Treinar</a>
+        <a href="{% url 'questions:create' %}"{% if nav == "criar" %} aria-current="page"{% endif %}>Criar questão</a>
+        <a href="{% url 'questions:mine' %}"{% if nav == "minhas" %} aria-current="page"{% endif %}>Minhas questões{% if my_questions_new_comments %} <span class="count" aria-label="{{ my_questions_new_comments }} comentários novos">{{ my_questions_new_comments }}</span>{% endif %}</a>
+        <a href="{% url 'accounts:interactions' %}"{% if nav == "interactions" %} aria-current="page"{% endif %}>Interações</a>
+        <a href="{% url 'accounts:stats' %}"{% if nav == "stats" %} aria-current="page"{% endif %}>Estatísticas</a>
+        {% if is_admin %}<a href="{% url 'moderation:dashboard' %}"{% if nav == "admin" %} aria-current="page"{% endif %}>Admin</a>{% endif %}
+      </nav>
+      <div class="topbar__end">
+        <details class="account-menu">
+          <summary aria-label="Menu da conta"><span class="avatar" aria-hidden="true">{{ user.name|slice:":1"|upper }}</span><span class="account-menu__name">{{ user.name|truncatechars:18 }}</span></summary>
+          <div class="account-menu__panel">
+            <div class="account-menu__who"><strong>{{ user.name }}</strong><small>{{ user.email }}</small></div>
+            <a href="{% url 'accounts:account' %}"><svg width="18" height="18" aria-hidden="true"><use href="#i-gear"/></svg>Conta</a>
+            <form method="post" action="{% url 'accounts:logout' %}">
+              {% csrf_token %}
+              <button type="submit"><svg width="18" height="18" aria-hidden="true"><use href="#i-logout"/></svg>Sair</button>
+            </form>
+          </div>
+        </details>
+      </div>
     {% else %}
-      <a href="{% url 'accounts:login' %}">Entrar</a>
-      <a href="{% url 'accounts:register' %}">Cadastrar</a>
+      <div class="topbar__end">
+        <a class="btn btn-ghost" href="{% url 'accounts:login' %}">Entrar</a>
+        <a class="btn btn-primary btn-small" href="{% url 'accounts:register' %}">Criar conta</a>
+      </div>
     {% endif %}
   </div>
-</nav>
+</header>
